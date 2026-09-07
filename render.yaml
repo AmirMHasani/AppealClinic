@@ -1,0 +1,21 @@
+# AppealClinic — Render Blueprint (Free Web Service)
+# Canonical deploy steps: docs/deploy-cheap.md
+services:
+  - type: web
+    name: appealclinic
+    runtime: node
+    plan: free
+    buildCommand: bun install --frozen-lockfile && bunx prisma generate && bun run build
+    startCommand: bun run start
+    healthCheckPath: /
+    envVars:
+      - key: APP_MODE
+        value: demo
+      - key: REQUIRE_REDACTION_CHECK
+        value: "true"
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      # Leave DATABASE_URL unset for JSON store; set later for Neon/Render Postgres
+      # Leave STRIPE_* unset (Stripe last)

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Next.js / build artifacts
+.next/
+.next-*/
+out/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Local data / DBs
+data/store.json
+data/*.db
+
+# Logs / OS
+*.log
+.DS_Store
+
+# Archives
+*.tar.gz
+*.tgz
+
+# Golden-set shadow / PHI
+golden-set/shadow/
+*.phi.pdf
+*.phi.*

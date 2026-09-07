@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ClinicSettings {
+  id                String   @id @default("default")
+  clinicName        String
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String
+  zip               String
+  phone             String
+  fax               String?
+  npi               String?
+  signerName        String?
+  signerCredentials String?
+  updatedAt         DateTime @updatedAt
+}
+
+model AppealCase {
+  id             String   @id
+  createdAt      DateTime
+  updatedAt      DateTime
+  meta           Json
+  denial         Json
+  clinical       Json
+  letterMarkdown String?
+  checklist      Json?
+  gaps           Json?
+  outcome        Json
+}
+
+model AppMeta {
+  id     String  @id @default("default")
+  seeded Boolean @default(false)
+}

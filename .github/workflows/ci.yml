@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-golden:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_SECRET: ci-build-secret
+      APP_MODE: demo
+      # Intentionally unset DATABASE_URL so build/golden use JSON store.
+      # Prisma generate only needs a placeholder URL for schema parsing.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prisma generate
+        run: bunx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Production build
+        run: bun run build
+
+      - name: Golden-set QA
+        run: bun run golden
