@@ -1,0 +1,109 @@
+{
+  "id": "SYN-AD-014",
+  "description": "AD / Quantity / dose limit / Humana / Abrocitinib (Cibinqo)",
+  "case": {
+    "id": "golden-syn-ad-014",
+    "created_at": "2026-09-01T12:00:00.000Z",
+    "updated_at": "2026-09-01T12:00:00.000Z",
+    "meta": {
+      "internal_case_id": "SYN-AD-014",
+      "patient_initials": "I.J.",
+      "indication": "atopic_dermatitis",
+      "requested_drug": "Abrocitinib (Cibinqo)",
+      "requested_dose": "200 mg PO daily",
+      "place_of_service": "specialty_pharmacy"
+    },
+    "denial": {
+      "payer_id": "humana",
+      "denial_type": "quantity_limit",
+      "denial_date": "2026-05-20",
+      "appeal_deadline": "2027-02-28",
+      "auth_or_claim_number": "AUTH-SYN-10028",
+      "denial_verbatim": "Request exceeds the plan quantity / dose limit for this medication. The prescribed regimen is not approved at the requested quantity.",
+      "carc_codes": "CO-50"
+    },
+    "clinical": {
+      "diagnosis_icd10": [
+        "L20.9"
+      ],
+      "disease_severity": {
+        "bsaPercent": 43,
+        "iga": 3,
+        "dlqi": 12,
+        "durationYears": 13,
+        "notes": "Moderate-to-severe AD with sleep disruption"
+      },
+      "failed_therapies": [
+        {
+          "drug": "High-potency topical corticosteroids",
+          "class": "Topical",
+          "reasonStopped": "Inadequate for extensive disease"
+        },
+        {
+          "drug": "Tacrolimus ointment",
+          "class": "Topical calcineurin inhibitor",
+          "reasonStopped": "Burning; incomplete control"
+        },
+        {
+          "drug": "Dupilumab (Dupixent)",
+          "class": "IL-4Rα antagonist",
+          "start": "2024-03",
+          "stop": "2025-11",
+          "reasonStopped": "Ocular AE and incomplete control"
+        },
+        {
+          "drug": "Narrowband UVB",
+          "class": "Phototherapy",
+          "start": "2023",
+          "stop": "2023",
+          "reasonStopped": "Logistics / incomplete response"
+        }
+      ],
+      "contraindications_to_step": "See prior therapy table and severity measures.",
+      "labs_imaging": "",
+      "clinical_narrative_bullets": "- Severe flexural and hand involvement\n- Nighttime scratching with excoriations\n- Shared decision for systemic therapy",
+      "guidelines_user_paste": "AAD AD guidelines: systemic agents may be considered for moderate-to-severe AD inadequately controlled with topicals and/or biologics, with appropriate monitoring."
+    },
+    "outcome": {
+      "status": "draft"
+    }
+  },
+  "settings": {
+    "clinic_name": "Riverside Dermatology (Demo)",
+    "address_line1": "100 Synthetic Ave, Suite 200",
+    "city": "Philadelphia",
+    "state": "PA",
+    "zip": "19103",
+    "phone": "(215) 555-0142",
+    "fax": "(215) 555-0143",
+    "npi": "1234567890",
+    "signer_name": "Alex Rivera, MD",
+    "signer_credentials": "Board-certified Dermatologist"
+  },
+  "expected_checklist_themes": [
+    "Signed appeal / medical necessity letter",
+    "Copy of denial letter",
+    "Clinical notes supporting diagnosis and severity",
+    "Prior therapy documentation",
+    "Relevant labs / TB / Hep B screening",
+    "payer policy PDF",
+    "Prescriber attestation for requested dose"
+  ],
+  "forbidden_hallucinated_cites": [
+    "https://example.com/fake-policy",
+    "Policy Number: FABRICATED-9999",
+    "CPB-FAKE-0000",
+    "http://invented-payer-policy.invalid/",
+    "42 CFR §999.999",
+    "NCD 999.9"
+  ],
+  "rubric_weights": {
+    "1": 1,
+    "2": 1,
+    "3": 1,
+    "4": 1,
+    "5": 1,
+    "6": 1,
+    "7": 1
+  }
+}
