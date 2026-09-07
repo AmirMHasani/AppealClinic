@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --page-bg: #f6f1ea;
+  --surface: #fffcf7;
+  --border: #e2d9ce;
+  --ink: #0e1c2c;
+  --ring: #1e3a56;
+  --accent: #0f6b6b;
+}
+
+body {
+  @apply bg-paper text-ink antialiased font-sans text-[13.5px] leading-snug;
+}
+
+@layer components {
+  .page-shell {
+    @apply min-h-screen bg-paper;
+  }
+
+  .container-app {
+    @apply mx-auto w-full max-w-6xl px-3 sm:px-5;
+  }
+
+  .container-narrow {
+    @apply mx-auto w-full max-w-3xl px-3 sm:px-5;
+  }
+
+  .card {
+    @apply rounded border border-paper-rule bg-paper-raised shadow-card;
+  }
+
+  .card-pad {
+    @apply card p-3.5 sm:p-4;
+  }
+
+  .label {
+    @apply block text-[11px] font-semibold uppercase tracking-clinical text-ink-muted;
+  }
+
+  .hint {
+    @apply mt-1 text-[11px] leading-snug text-ink-faint;
+  }
+
+  .field {
+    @apply mt-1 block w-full rounded border border-paper-rule bg-white px-2.5 py-1.5 text-[13px] text-ink
+      placeholder:text-ink-faint
+      transition
+      hover:border-brand-300
+      focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600/30
+      disabled:cursor-not-allowed disabled:bg-paper disabled:text-ink-faint;
+  }
+
+  textarea.field {
+    @apply min-h-[5.5rem] font-mono text-[12.5px] leading-relaxed;
+  }
+
+  select.field {
+    @apply pr-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-[12.5px] font-semibold tracking-tight
+      transition focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/40 focus-visible:ring-offset-1
+      disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-900 text-white hover:bg-ink active:bg-brand-950;
+  }
+
+  .btn-secondary {
+    @apply btn border border-paper-rule bg-paper-raised text-ink hover:bg-paper active:bg-brand-50;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-brand-50 hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn border border-rose-300 bg-rose-50 text-clinical-danger hover:bg-rose-100;
+  }
+
+  .btn-accent {
+    @apply btn bg-accent text-white hover:bg-accent-deep active:bg-accent-deep;
+  }
+
+  .btn-lg {
+    @apply px-4 py-2.5 text-[13px];
+  }
+
+  .btn-block {
+    @apply w-full;
+  }
+
+  .section-title {
+    @apply font-serif text-base font-semibold tracking-tight text-ink;
+  }
+
+  .page-title {
+    @apply font-serif text-xl font-semibold tracking-tight text-ink sm:text-2xl;
+  }
+
+  .page-subtitle {
+    @apply mt-0.5 text-[12.5px] text-ink-muted;
+  }
+
+  .link-brand {
+    @apply font-medium text-accent hover:text-accent-deep hover:underline underline-offset-2;
+  }
+
+  .sticky-cta {
+    @apply sticky bottom-0 z-20 -mx-3 border-t border-paper-rule bg-paper-raised/95 px-3 py-2.5
+      sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center rounded border border-dashed border-paper-rule bg-paper-raised px-5 py-10 text-center;
+  }
+
+  .mono-id {
+    @apply font-mono text-[12px] font-medium tracking-tight text-ink;
+  }
+
+  .ops-kicker {
+    @apply text-[10px] font-semibold uppercase tracking-clinical text-ink-faint;
+  }
+
+  .stat-tile {
+    @apply card px-3 py-2.5;
+  }
+
+  .proof-chip {
+    @apply rounded border border-paper-rule bg-paper-raised px-3 py-2.5;
+  }
+
+  .site-header {
+    @apply border-b border-paper-rule bg-paper-raised;
+  }
+
+  .source-footnote {
+    @apply text-[10px] leading-snug text-ink-faint;
+  }
+
+  .source-footnote a {
+    @apply text-accent underline-offset-2 hover:underline;
+  }
+}
+
+.prose-letter {
+  @apply font-serif text-[14px] leading-relaxed text-ink;
+}
+.prose-letter h2 {
+  @apply mt-5 mb-1.5 font-serif text-base font-semibold text-ink;
+}
+.prose-letter h3 {
+  @apply mt-3.5 mb-1 text-[13.5px] font-sans font-semibold text-brand-800;
+}
+.prose-letter blockquote {
+  @apply my-2 border-l-2 border-accent pl-3 italic text-ink-muted;
+}
+
+@media print {
+  .print\:hidden {
+    display: none !important;
+  }
+}
