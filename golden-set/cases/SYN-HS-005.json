@@ -1,0 +1,103 @@
+{
+  "id": "SYN-HS-005",
+  "description": "HS / Step therapy / fail-first / Humana / Secukinumab (Cosentyx)",
+  "case": {
+    "id": "golden-syn-hs-005",
+    "created_at": "2026-09-01T12:00:00.000Z",
+    "updated_at": "2026-09-01T12:00:00.000Z",
+    "meta": {
+      "internal_case_id": "SYN-HS-005",
+      "patient_initials": "E.F.",
+      "indication": "hidradenitis_suppurativa",
+      "requested_drug": "Secukinumab (Cosentyx)",
+      "requested_dose": "300 mg SQ weekly x 5, then q4 weeks",
+      "place_of_service": "specialty_pharmacy"
+    },
+    "denial": {
+      "payer_id": "humana",
+      "denial_type": "step_therapy",
+      "denial_date": "2026-03-26",
+      "appeal_deadline": "2027-02-28",
+      "auth_or_claim_number": "AUTH-SYN-10034",
+      "denial_verbatim": "Coverage denied: member has not completed required step therapy with preferred agents. Requested therapy does not meet step therapy requirements.",
+      "carc_codes": ""
+    },
+    "clinical": {
+      "diagnosis_icd10": [
+        "L73.2"
+      ],
+      "disease_severity": {
+        "hurleyStage": 2,
+        "dlqi": 22,
+        "durationYears": 4,
+        "notes": "Recurrent abscesses and tunnels"
+      },
+      "failed_therapies": [
+        {
+          "drug": "Oral doxycycline / clindamycin-rifampin",
+          "class": "Antibiotics",
+          "start": "2022",
+          "stop": "2024",
+          "reasonStopped": "Recurrent flares despite prolonged courses"
+        },
+        {
+          "drug": "Intralesional corticosteroids / I&D",
+          "class": "Procedural",
+          "reasonStopped": "Symptom relief only"
+        },
+        {
+          "drug": "Adalimumab (Humira biosimilar)",
+          "class": "TNF inhibitor",
+          "start": "2025-01",
+          "stop": "2026-05",
+          "reasonStopped": "Partial then secondary failure; HiSCR not sustained"
+        }
+      ],
+      "contraindications_to_step": "Documented failures of preferred agents; further step cycling not clinically appropriate.",
+      "labs_imaging": "Quantiferon negative. Hep B surface Ag negative. Baseline CBC/CMP WNL.",
+      "clinical_narrative_bullets": "- Hurley stage II+ HS\n- Pain and drainage limiting work\n- Medical optimization preferred before surgery",
+      "guidelines_user_paste": "Clinical practice supports biologic therapy for moderate HS after failure of conventional systemic therapy."
+    },
+    "outcome": {
+      "status": "draft"
+    }
+  },
+  "settings": {
+    "clinic_name": "Riverside Dermatology (Demo)",
+    "address_line1": "100 Synthetic Ave, Suite 200",
+    "city": "Philadelphia",
+    "state": "PA",
+    "zip": "19103",
+    "phone": "(215) 555-0142",
+    "fax": "(215) 555-0143",
+    "npi": "1234567890",
+    "signer_name": "Alex Rivera, MD",
+    "signer_credentials": "Board-certified Dermatologist"
+  },
+  "expected_checklist_themes": [
+    "Signed appeal / medical necessity letter",
+    "Copy of denial letter",
+    "Clinical notes supporting diagnosis and severity",
+    "Prior therapy documentation",
+    "Relevant labs / TB / Hep B screening",
+    "payer policy PDF",
+    "Photo documentation or procedure notes"
+  ],
+  "forbidden_hallucinated_cites": [
+    "https://example.com/fake-policy",
+    "Policy Number: FABRICATED-9999",
+    "CPB-FAKE-0000",
+    "http://invented-payer-policy.invalid/",
+    "42 CFR §999.999",
+    "NCD 999.9"
+  ],
+  "rubric_weights": {
+    "1": 1,
+    "2": 1,
+    "3": 1,
+    "4": 1,
+    "5": 1,
+    "6": 1,
+    "7": 1
+  }
+}
