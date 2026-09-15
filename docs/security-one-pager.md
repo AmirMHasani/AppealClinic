@@ -29,10 +29,12 @@ Every letter includes a footer: *Draft for clinical/billing review. Confirm paye
 
 | Persistence | MVP today | Notes |
 | --- | --- | --- |
-| **Hosted demo** | **Managed Postgres** via `DATABASE_URL` (Prisma) | Primary path on Render. Cases survive sleep/redeploy. |
+| **Hosted demo** | **Managed Postgres** via `DATABASE_URL` (Prisma) | Primary path on Render Free. Cases survive sleep/redeploy. |
 | **Local laptop / CI** | JSON file (`data/store.json`) | Used **only** when `DATABASE_URL` is unset. Not the hosted primary store. |
 
-**Do not put real PHI into the MVP.** Demo mode (`APP_MODE=demo`) + redaction-first UX + synthetic seed data are the intended posture until BAAs are in place.
+**Do not put real PHI into the MVP.** Demo mode (`APP_MODE=demo`, default) + redaction-first UX + synthetic seed data are the intended posture until BAAs are in place.
+
+**PHI gate (Phase 3 engineering):** Real PHI workflows require `APP_MODE=phi` only after BAAs + `docs/phi-mode-checklist.md`. Unknown modes fail closed to demo. Public `*.onrender.com` demo refuses accidental PHI mode unless `ALLOW_PHI_ON_DEMO_HOST=true`.
 
 **Production target:** multi-tenant hosted app with encrypted storage, clinic-scoped access controls, audit-friendly retention/deletion, and BAA-covered subprocessors before any PHI workflows.
 
@@ -41,8 +43,9 @@ Every letter includes a footer: *Draft for clinical/billing review. Confirm paye
 ## Redaction-first UX (**MVP today**)
 
 - Amber **EnvironmentBanner** when `APP_MODE=demo` (default if unset): **“Development / Demo · Not for real PHI — synthetic or de-identified data only”**.
+- Muted **PHI mode — BAA environment** banner when `APP_MODE=phi` (not the demo amber).
 - Banner on the new-case wizard: do not enter full names, SSNs, full MRNs, DOB, or street addresses.
-- `REQUIRE_REDACTION_CHECK=true` (recommended on shared demos) hard-blocks common PHI patterns.
+- `REQUIRE_REDACTION_CHECK` defaults **true** when unset (hard-blocks common PHI patterns beyond SSN).
 - Landing and docs reinforce synthetic / de-identified use for demos and shadow validation.
 - Staff remain responsible for scrubbing packets before entry.
 
@@ -50,14 +53,15 @@ Every letter includes a footer: *Draft for clinical/billing review. Confirm paye
 
 ## Auth, encryption & hosting (**MVP today** vs target)
 
-| Topic | MVP today (live demo) | Production target |
+| Topic | MVP today (live demo) | Production / PHI target |
 | --- | --- | --- |
-| Host | Render Free — `https://appealclinic.onrender.com` | Paid / BAA-capable host when PHI is in scope |
+| Host | Render Free — `https://appealclinic.onrender.com` | Stay on Render Free until closer to PHI; paid Render web **TBD** (Amir). No Fly/Starter auto-provision. |
 | In transit | **HTTPS** (TLS at Render) | HTTPS only |
-| At rest | **Managed Postgres** (Render Free Postgres via `DATABASE_URL`); provider disk encryption | BAA-capable Postgres; optional Neon or paid Render |
+| At rest | **Render Free Postgres** via `DATABASE_URL` (demo) | **Neon Scale + HIPAA BAA** for PHI (`docs/neon-cutover.md`). Free DB expires ~**2026-10-15**. |
 | Auth | **JWT session cookie** (`ac_session`) + **scrypt** password hashes; **`AUTH_SECRET` required** on shared/production-like hosts | Strong secrets, HTTPS-only cookies, MFA / production identity as needed |
+| Tenancy | **Clinic / Membership**, cases scoped by `clinicId` (Phase 2) | Same model under BAA env |
 | LLM | Optional; not required for core drafts; **unset** on demo | Azure OpenAI **or** AWS Bedrock under a BAA — only after BAAs |
-| Payments | **Stripe unset** (last) | Stripe Checkout after Phase 1 test path |
+| Payments | **Stripe unset / test** (last) | Stripe Checkout after Phase 4 gates; live keys gated |
 
 ---
 
@@ -73,15 +77,16 @@ Every letter includes a footer: *Draft for clinical/billing review. Confirm paye
 
 ## Subprocessors (**MVP today** vs placeholders)
 
-| Role | MVP today | Notes / production target |
+| Role | MVP today | Notes / PHI target |
 | --- | --- | --- |
-| App hosting | **Render** (Free web service) | HTTPS, deploy; upgrade/BAA path later |
-| Database | **Render Free Postgres** (`appealclinic-db`, instance **`dpg-dakns77qj5pc73d7koj0-a`**) today | Free tier expires ~**2026-10-15** — migrate to **Neon free** (external `DATABASE_URL`) **or** paid Render Postgres before then. Prefer **internal** URL when DB stays on Render same region. Optional keep-alive: UptimeRobot/cron → `/api/health` every 10–14 min (`docs/keepalive.md`). See also `docs/deploy-cheap.md`. |
+| App hosting | **Render** (Free web service) | Stay Free until closer to PHI; paid Render TBD |
+| Database (demo) | **Render Free Postgres** (`dpg-dakns77qj5pc73d7koj0-a`) | Expires ~**2026-10-15** — **not** BAA for PHI |
+| Database (PHI) | Not live yet | **Neon Scale + BAA** — Amir provisions; see `docs/neon-cutover.md` |
 | LLM (optional polish) | Unset on demo | **Azure OpenAI** or **AWS Bedrock** under BAA only |
-| Payments | **Stripe unset** (last) | Subscription Checkout; card data stays with Stripe when enabled |
+| Payments | **Stripe** test/unset (last) | Subscription Checkout; card data stays with Stripe when enabled |
 | Email (if added later) | None | Only with BAA or transactional no-PHI mail |
 
-Exact legal entities and DPAs will be listed in a customer-facing subprocessors schedule before PHI go-live.
+Draft list: `docs/subprocessors.md`. Exact legal entities and DPAs will be listed in a customer-facing schedule before PHI go-live.
 
 ---
 
@@ -90,10 +95,10 @@ Exact legal entities and DPAs will be listed in a customer-facing subprocessors 
 **Founder gate before PHI:**
 
 1. AppealClinic (or its operating entity) will execute a **BAA with each customer** before that customer may use workflows involving PHI.
-2. We will execute **BAAs with BAA-capable vendors** (hosting/DB/LLM as applicable) **before** enabling PHI workflows on those systems.
-3. Until those BAAs are in place, use remains **synthetic, de-identified, or shadow-validation** only.
+2. We will execute **BAAs with BAA-capable vendors** (Neon for DB; host/LLM as applicable) **before** enabling PHI workflows / `APP_MODE=phi`.
+3. Until those BAAs are in place, use remains **synthetic, de-identified, or shadow-validation** only (`APP_MODE=demo`).
 
-We do **not** claim HIPAA Covered Entity status for your practice; you remain responsible for your own compliance program. We aim to be a careful Business Associate when PHI is in scope. See `docs/baa-and-hosting-options.md`.
+We do **not** claim HIPAA Covered Entity status for your practice; you remain responsible for your own compliance program. We aim to be a careful Business Associate when PHI is in scope. See `docs/baa-and-hosting-options.md` and `docs/phi-mode-checklist.md`.
 
 ---
 
@@ -101,8 +106,9 @@ We do **not** claim HIPAA Covered Entity status for your practice; you remain re
 
 | | |
 | --- | --- |
-| **MVP today** | Hosted demo on Render Free + managed Postgres; demo banner; redaction-first; synthetic data; JWT + scrypt; HTTPS; Stripe **off**; no live PHI commitment |
-| **Sellable v1 target** | Hosted app + BAA path (DB/host ± Azure OpenAI or Bedrock) + Stripe $249/mo after Phase 2 exit and security review |
+| **MVP today** | Hosted demo on Render Free + Free Postgres; demo banner; redaction-first; synthetic data; JWT + scrypt; HTTPS; Phase 2 tenancy/audit/retention; Stripe **off**; `APP_MODE=demo`; no live PHI |
+| **Phase 3 prep** | Product flag `APP_MODE=phi` gated; Neon cutover docs; subprocessors draft — **no Neon provision / no Render env flip yet** |
+| **Sellable v1 target** | Neon BAA DB + Render web (Free→paid TBD) ± Azure OpenAI/Bedrock + Stripe $249/mo after gates |
 | **Not claimed** | SOC 2, HITRUST, or “HIPAA certified” product badge |
 
 ---
