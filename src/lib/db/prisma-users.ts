@@ -42,7 +42,6 @@ export async function prismaCreateUser(user: DemoUser): Promise<DemoUser> {
     where: { email: { equals: user.email, mode: "insensitive" } },
   });
   if (existing) throw new Error("DUPLICATE_EMAIL");
-  // Ensure demo clinic exists for FK
   await client().clinic.upsert({
     where: { id: DEMO_CLINIC_ID },
     create: { id: DEMO_CLINIC_ID, name: "Demo Clinic" },
