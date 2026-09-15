@@ -6,7 +6,7 @@ Self-serve SaaS MVP for independent US dermatology clinics: paste a biologic/JAK
 
 - Next.js App Router + TypeScript + Tailwind CSS
 - Local demo auth (JWT cookie via jose) — no external SaaS keys required
-- Persistence: JSON store under `data/store.json` (works on Render/Railway/VPS Node). Optional `DATABASE_URL` (Prisma/Neon) mainly if using Vercel — not required for the preferred cheap demo host
+- Persistence: **JSON only when `DATABASE_URL` unset** (local + ephemeral demo). **Production Render multi-user REQUIRES `DATABASE_URL`** (Prisma Postgres).
 - Letter generator: deterministic template/rules engine (required). Optional OpenAI if OPENAI_API_KEY is set
 - DOCX via docx package; PDF via print-friendly route (/cases/[id]/print)
 - Stripe: **last** — Checkout stubbed / test-only; leave keys unset for demos; do not push live payments
@@ -37,9 +37,20 @@ bun run build
 bun run start
 ```
 
-## Postgres (optional)
+## Postgres (durable / production path)
 
-When `DATABASE_URL` is set, the app uses Prisma (`prisma/schema.prisma`). Apply schema with `bun run db:push`. Leave unset for local demo / Render Free JSON. See `docs/deploy-cheap.md`.
+**JSON only when `DATABASE_URL` unset** (local laptop/CI + ephemeral Render Free).  
+**Production multi-user on Render REQUIRES `DATABASE_URL`.**
+
+```bash
+export DATABASE_URL='postgresql://USER:PASS@HOST/DB?sslmode=require'  # prefer Render Internal URL
+bun run db:push          # or rely on start:render which runs prisma db push
+bun run db:seed          # upsert DEMO_USER + settings (+ --cases)
+bun run start:render     # db push (if DATABASE_URL) then next start
+```
+
+Leave `DATABASE_URL` unset for local JSON. Full Render steps: `docs/deploy-cheap.md`. Stripe stays off.
+
 
 ## Environment variables
 
@@ -48,10 +59,7 @@ When `DATABASE_URL` is set, the app uses Prisma (`prisma/schema.prisma`). Apply 
 | AUTH_SECRET | Required on deploy | Signs session cookies; refuse weak defaults in production |
 | APP_MODE | No (default demo) | demo banner vs production |
 | REQUIRE_REDACTION_CHECK | No | Hard-block non-SSN redaction hits when true |
-| DATABASE_URL | No | Prisma Postgres when set; else JSON |
-| APP_MODE | No | `demo` (default) shows banner; `production` hides it |
-| REQUIRE_REDACTION_CHECK | No | When true, block any PHI-pattern hits; SSN always blocks |
-| DATABASE_URL | No* | Prisma Postgres (Neon). *Required on Vercel; leave unset for local/Render JSON |
+| DATABASE_URL | **Required for multi-user** | Prisma Postgres when set; JSON only when unset. See `docs/deploy-cheap.md` |
 | OPENAI_API_KEY | No | Optional letter polish |
 | STRIPE_SECRET_KEY | No | Stripe Checkout |
 | NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY | No | Stripe UI |
