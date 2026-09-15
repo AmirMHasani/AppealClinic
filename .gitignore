@@ -15,6 +15,7 @@ build/
 
 # Local data / DBs
 data/store.json
+data/app-meta.json
 data/*.db
 
 # Logs / OS

@@ -27,12 +27,10 @@ export async function getStore(): Promise<Store> {
     const [settings, cases, users] = await Promise.all([
       p.prismaGetSettings(),
       p.prismaListCases(),
-      // reconstruct minimal store shape for debug
-      Promise.resolve([] as DemoUser[]),
+      p.prismaListUsers(),
     ]);
-    const demo = await p.prismaFindUserByEmail("demo@appealclinic.local");
     return {
-      users: demo ? [demo] : users,
+      users,
       settings,
       cases,
       seeded: true,
@@ -123,4 +121,33 @@ export async function migrateUserPasswordHash(
     return;
   }
   json.jsonMigrateUserPasswordHash(id, passwordHash);
+}
+
+export async function listUsers(): Promise<DemoUser[]> {
+  if (usingPostgres()) return (await pg()).prismaListUsers();
+  return json.jsonListUsers();
+}
+
+export async function createUser(user: DemoUser): Promise<DemoUser> {
+  if (usingPostgres()) return (await pg()).prismaCreateUser(user);
+  return json.jsonCreateUser(user);
+}
+
+export type SubscriptionEntitlement = {
+  planEntitled: boolean;
+  subscriptionStatus: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+export async function getSubscriptionEntitlement(): Promise<SubscriptionEntitlement> {
+  if (usingPostgres()) return (await pg()).prismaGetSubscriptionEntitlement();
+  return json.jsonGetSubscriptionEntitlement();
+}
+
+export async function setSubscriptionEntitlement(
+  patch: Partial<SubscriptionEntitlement>
+): Promise<SubscriptionEntitlement> {
+  if (usingPostgres()) return (await pg()).prismaSetSubscriptionEntitlement(patch);
+  return json.jsonSetSubscriptionEntitlement(patch);
 }
