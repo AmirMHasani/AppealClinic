@@ -14,7 +14,8 @@ const WEAK_SECRETS = new Set([
 ]);
 
 function isProductionLike(): boolean {
-  return getAppMode() === "production" || process.env.NODE_ENV === "production";
+  // Strong AUTH_SECRET required for PHI mode or NODE_ENV=production (e.g. Render).
+  return getAppMode() === "phi" || process.env.NODE_ENV === "production";
 }
 
 /** Resolve AUTH_SECRET; refuse weak/missing secrets outside demo. */
@@ -23,7 +24,7 @@ export function resolveAuthSecret(): Uint8Array {
   if (isProductionLike()) {
     if (!raw || WEAK_SECRETS.has(raw)) {
       throw new Error(
-        "AUTH_SECRET is missing or uses a known weak default. Set a strong secret before running in production."
+        "AUTH_SECRET is missing or uses a known weak default. Set a strong secret before running in production or APP_MODE=phi."
       );
     }
   }

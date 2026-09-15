@@ -23,11 +23,11 @@ const WEAK = new Set(["", "dev-secret-change-me", "appealclinic-dev-secret"]);
 
 function secretKey(): Uint8Array {
   const raw = process.env.AUTH_SECRET?.trim() ?? "";
-  const production =
-    process.env.APP_MODE === "production" ||
+  const productionLike =
+    process.env.APP_MODE === "phi" ||
     process.env.NODE_ENV === "production";
-  if (production && (!raw || WEAK.has(raw))) {
-    // Fail closed for page/API auth in production misconfig
+  if (productionLike && (!raw || WEAK.has(raw))) {
+    // Fail closed for page/API auth in production / PHI misconfig
     return new TextEncoder().encode("__invalid_production_secret__");
   }
   return new TextEncoder().encode(raw || "appealclinic-dev-secret");
