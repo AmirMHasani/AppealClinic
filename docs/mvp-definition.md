@@ -24,8 +24,8 @@ You are **not** asking them to validate whether the product should exist.
 - [x] Redaction-first UX + optional hard block (`REQUIRE_REDACTION_CHECK=true`)
 - [x] Environment banner when `APP_MODE=demo` or unset (not for real PHI)
 - [x] Golden-set letter QA runnable (`bun run golden`) with documented pass bar
-- [ ] Demo hosted on a stable URL (**Render Free**) — **founder deploys** per `docs/deploy-cheap.md`
-- [ ] Stripe **test-mode** Checkout works end-to-end with founder's test keys — **last**, after hosted demo; **founder adds keys**
+- [x] Demo hosted on a stable URL (**Render Free**) — https://appealclinic.onrender.com (`srv-dafi4c5g1s2s73elki0g`); Postgres live (`appealclinic-db`) — see `docs/deploy-cheap.md`
+- [ ] Stripe **test-mode** Checkout works end-to-end with founder's test keys — **last**, after hosted demo; **founder adds keys** (still stubbed / unset)
 
 ### Docs / GTM readiness (no outreach required)
 
@@ -41,25 +41,32 @@ You are **not** asking them to validate whether the product should exist.
 - Clinic shadow packets / Philly outreach
 - Customer BAA signed
 - Live Stripe charges
-- Postgres / multi-tenant DB
 - EHR or auto-submit (out of scope for v1)
+
+**Note:** Hosted Render Free + Postgres are live for the **synthetic demo**. A **sellable HIPAA desk** still needs a signed BAA path — demo is **not** for real PHI (`docs/baa-and-hosting-options.md`).
 
 ---
 
 ## After MVP exit then approach businesses
 
-1. Deploy demo on **Render Free** (`docs/deploy-cheap.md`). Stripe test is **last** after the URL works.
+1. Demo URL is live on **Render Free** (`docs/deploy-cheap.md`). Stripe test is **last** — still unchecked.
 2. Use docs/pilot-one-pager.md + security one-pager.
-3. Offer a 14-day pilot at $249/mo.
+3. Offer a 14-day pilot at $249/mo (synthetic / non-PHI until BAA).
 4. Shadow packets are optional quality fuel — not a gate.
 
 ---
 
-## Still on founder (Amir)
+## Ownership split (current)
 
-- Render account + Free Web Service deploy — public demo URL (`docs/deploy-cheap.md`)
-- Domain (optional) — branding
-- Stripe account + test keys / Price ID — test Checkout **last** (after hosted demo smoke)
+### Still on founder (Amir)
+
+- Stripe account + test keys / Price ID — test Checkout **last** (hosted demo is already up)
 - Flip STRIPE_LIVE_ENABLED only after checklist — real money
 - BAA vendor path when PHI pilots start — docs/baa-and-hosting-options.md
+- Domain (optional) — branding
 - Vercel — optional only (`docs/deploy-vercel.md`); not the preferred demo host
+
+### CoS / Engineering
+
+- Desk automation finish (ops / tooling around the live demo desk)
+- Keep Render Free web + free Postgres healthy until expiry / upgrade (`docs/deploy-cheap.md`)

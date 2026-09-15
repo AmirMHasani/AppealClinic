@@ -180,19 +180,20 @@ Cases: `golden-set/cases/*.json` (also `golden-set/cases.json`). Rubric: `golden
 
 ## Roadmap (MVP-first)
 
-1. **Ship approachable MVP** — demo URL, redaction, golden-set, docs (`docs/mvp-definition.md`).
-2. **Then approach businesses** — pilot one-pager + security one-pager; 14-day pilot at $249/mo.
-3. **Deprioritized as MVP prerequisite:** asking clinics for shadow packets. Shadow validation is optional quality fuel after you have a product to show — not a gate to build.
+1. **Hosted demo live** — https://appealclinic.onrender.com (Render Free `srv-dafi4c5g1s2s73elki0g` + free Postgres `appealclinic-db`; Free DB expires ~2026-10-15). Demo login: `demo@appealclinic.local` / `demo1234`. See `docs/mvp-definition.md` / `docs/deploy-cheap.md`.
+2. **Stripe still last / stubbed** — founder (Amir) finishing BAA + Stripe test keys on his side (`docs/stripe-go-live.md`). Do not enable live payments.
+3. **BAA / PHI** — founder path; demo is **not** for real PHI. Sellable HIPAA desk still needs BAA (`docs/baa-and-hosting-options.md`).
+4. **CoS / Engineering** — finishing desk automation around the live demo.
+5. **Then approach businesses** — pilot one-pager + security one-pager; 14-day pilot at $249/mo (synthetic until BAA).
+6. **Deprioritized as MVP prerequisite:** clinic shadow packets — optional quality fuel, not a gate.
 
-Deploy: `docs/deploy-cheap.md` (default Render Free; Vercel optional). Stripe **last**: `docs/stripe-go-live.md` (no real money until founder flips live + checklist).
+Deploy: `docs/deploy-cheap.md` (`npm run start:render`). Stripe **last**: `docs/stripe-go-live.md`.
 
+## Hosted demo (live)
 
+**Live:** https://appealclinic.onrender.com — Render Free web + Internal `DATABASE_URL` → free `appealclinic-db`. Start: `npm run start:render` (`prisma db push` on boot). Leave Stripe unset. Full detail: **`docs/deploy-cheap.md`**.
 
-## Hosted demo (preferred path)
-
-**Prefer:** **Render Free** (or other cheap Node hosts) so `next start` can use the local JSON store for synthetic demos — see **`docs/deploy-cheap.md`**. Leave Stripe unset.
-
-**Optional / not preferred:** Vercel — serverless FS cannot reliably write `data/store.json`. Only if you insist on Vercel, use Postgres (`DATABASE_URL` / Neon) and follow `docs/deploy-vercel.md`. When `DATABASE_URL` is unset, the app keeps using the local JSON store (fine for `bun run dev` and Render-style Node hosts).
+**Local / optional:** When `DATABASE_URL` is unset, JSON store (fine for `bun run dev`). Vercel optional only — `docs/deploy-vercel.md`.
 
 ## CI
 
