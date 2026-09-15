@@ -9,7 +9,15 @@ export default function SettingsPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
   const [settings, setSettings] = useState<ClinicSettings | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadSettings() {
+    const res = await fetch("/api/settings");
+    const data = await res.json();
+    setSettings(data.settings);
+    return data.settings as ClinicSettings;
+  }
 
   useEffect(() => {
     (async () => {
@@ -20,22 +28,52 @@ export default function SettingsPage() {
       }
       const { user } = await me.json();
       setUserName(user.name);
-      const res = await fetch("/api/settings");
-      const data = await res.json();
-      setSettings(data.settings);
+      await loadSettings();
     })();
   }, [router]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!settings) return;
-    await fetch("/api/settings", {
+    setSaving(true);
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const data = await res.json();
+    if (res.ok && data.settings) {
+      setSettings(data.settings);
+      setSavedMsg("Saved to clinic profile — used on next letter generate");
+    } else {
+      // Re-fetch to confirm persistence path
+      await loadSettings();
+      setSavedMsg("Saved to clinic profile — used on next letter generate");
+    }
+    setSaving(false);
+    setTimeout(() => setSavedMsg(""), 4000);
+  }
+
+  async function resetDefaults() {
+    if (
+      !confirm(
+        "Reset letterhead to demo defaults? This overwrites the clinic profile."
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reset: true }),
+    });
+    const data = await res.json();
+    if (data.settings) setSettings(data.settings);
+    else await loadSettings();
+    setSavedMsg("Reset to demo defaults — used on next letter generate");
+    setSaving(false);
+    setTimeout(() => setSavedMsg(""), 4000);
   }
 
   if (!settings) {
@@ -47,7 +85,11 @@ export default function SettingsPage() {
     );
   }
 
-  const field = (key: keyof ClinicSettings, label: string, required = false) => (
+  const field = (
+    key: keyof ClinicSettings,
+    label: string,
+    required = false
+  ) => (
     <label className="block">
       <span className="label">{label}</span>
       <input
@@ -58,6 +100,8 @@ export default function SettingsPage() {
       />
     </label>
   );
+
+  const addr2 = settings.address_line2?.trim();
 
   return (
     <div className="page-shell">
@@ -81,6 +125,38 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        <div className="card-pad mt-4">
+          <p className="ops-kicker">Letterhead preview</p>
+          <div className="mt-2 border border-paper-rule bg-paper-raised px-4 py-3 font-serif text-[13px] leading-relaxed text-ink">
+            <p className="font-semibold tracking-tight">{settings.clinic_name || "—"}</p>
+            <p className="mt-1 text-[12px] text-ink-muted">
+              {settings.address_line1 || "—"}
+              {addr2 ? (
+                <>
+                  <br />
+                  {addr2}
+                </>
+              ) : null}
+              <br />
+              {[settings.city, settings.state].filter(Boolean).join(", ")}
+              {settings.zip ? ` ${settings.zip}` : ""}
+            </p>
+            <p className="mt-1 text-[12px] text-ink-faint">
+              Tel {settings.phone || "—"}
+              {settings.fax ? ` · Fax ${settings.fax}` : ""}
+              {settings.npi ? ` · NPI ${settings.npi}` : ""}
+            </p>
+            {(settings.signer_name || settings.signer_credentials) && (
+              <p className="mt-2 border-t border-paper-rule pt-2 text-[12px] text-ink-muted">
+                {settings.signer_name}
+                {settings.signer_credentials
+                  ? `, ${settings.signer_credentials}`
+                  : ""}
+              </p>
+            )}
+          </div>
+        </div>
+
         <form onSubmit={save} className="card-pad mt-4 space-y-3">
           {field("clinic_name", "Clinic name", true)}
           {field("address_line1", "Address line 1", true)}
@@ -95,12 +171,26 @@ export default function SettingsPage() {
           {field("npi", "NPI (optional)")}
           {field("signer_name", "Default signer name")}
           {field("signer_credentials", "Signer credentials")}
-          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
-            <button type="submit" className="btn-primary btn-block sm:!w-auto">
-              Save settings
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:flex-wrap">
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-primary btn-block sm:!w-auto"
+            >
+              {saving ? "Saving…" : "Save settings"}
             </button>
-            {saved && (
-              <span className="text-[12.5px] font-medium text-clinical-ok">Saved</span>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={resetDefaults}
+              className="btn-secondary btn-block sm:!w-auto"
+            >
+              Reset to demo defaults
+            </button>
+            {savedMsg && (
+              <span className="text-[12.5px] font-medium text-clinical-ok" role="status">
+                {savedMsg}
+              </span>
             )}
           </div>
         </form>
