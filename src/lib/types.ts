@@ -91,6 +91,8 @@ export interface CaseOutcome {
 
 export interface AppealCase {
   id: string;
+  /** Owning clinic (Phase 2 tenancy). Optional on golden fixtures. */
+  clinicId?: string;
   created_at: string;
   updated_at: string;
   meta: CaseMeta;
@@ -126,9 +128,43 @@ export interface DemoUser {
   name: string;
 }
 
+export type MembershipRole = "owner" | "coordinator";
+
+export interface ClinicRecord {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipRecord {
+  id: string;
+  userId: string;
+  clinicId: string;
+  role: MembershipRole;
+  created_at: string;
+}
+
+export interface AuditEventRecord {
+  id: string;
+  clinicId: string;
+  userId?: string | null;
+  action: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  meta?: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface Store {
   users: DemoUser[];
-  settings: ClinicSettings;
+  clinics: ClinicRecord[];
+  memberships: MembershipRecord[];
+  /** Settings keyed by clinicId (JSON path). Legacy single `settings` migrated on read. */
+  settingsByClinic: Record<string, ClinicSettings>;
+  /** @deprecated prefer settingsByClinic; kept for migration of old store.json */
+  settings?: ClinicSettings;
   cases: AppealCase[];
+  auditEvents: AuditEventRecord[];
   seeded: boolean;
 }
