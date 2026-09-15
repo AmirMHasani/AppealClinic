@@ -1,53 +1,59 @@
-# Deploy to Vercel (optional — not preferred)
+# Deploy to Vercel Hobby (free demo URL)
 
-> **Hosting preference:** Vercel is **optional**, not the primary path for Amir’s bootstrap demo.  
-> Prefer **$0 / cheap Node hosts** in **`docs/deploy-cheap.md`** (default: **Render Free**).  
-> Use this doc only if you already have Vercel set up or explicitly want it.
+**Audience:** Amir / CoS — public **free** demo after leaving Render auto-deploy spam.  
+**Live Render rollback:** keep `https://appealclinic.onrender.com` up until this URL smoke-passes.  
+**Stripe:** last. **APP_MODE:** `demo`. **PHI:** not here — Neon Scale + BAA later (`docs/neon-cutover.md`).
 
-See also: `docs/baa-and-hosting-options.md` (PHI / BAA later — separate from first demo URL).
+## Why Vercel Hobby for the free demo
 
-## Why it is not preferred for this MVP
+- Durable **$0** host that runs this Next.js App Router + Prisma cleanly.
+- Railway free (~$1/mo credit) and Fly (no free tier for new accounts) are weaker for an always-on demo.
+- JSON `data/store.json` is **not** durable on Vercel — **`DATABASE_URL` is required** (Postgres).
 
-- This app persists demo state with **`data/store.json` via Node `fs`**. On Vercel, the filesystem is **ephemeral / not a durable store** across serverless invocations — fine for throwaway clicks, awkward as a “stable demo workspace.”
-- Cold/serverless behavior and platform lock-in are unnecessary when Render Free / Railway / a $4–6 VPS run plain `next start`.
-- Stripe stays **last** either way — do not couple “first URL” to Checkout.
+## Postgres (required)
 
-## If you still deploy on Vercel
+Use **one** of:
 
-1. Import repo on vercel.com  
-2. Set `AUTH_SECRET` and `APP_MODE=demo`  
-3. Optional Stripe **test** keys for `/upgrade` only — leave unset for first demos; never enable live payments here  
-4. Deploy; use `*.vercel.app` until custom domain  
-5. Treat `store.json` as **ephemeral** — demo / synthetic only  
-6. PHI pilots need BAA-capable hosting (Enterprise or alternate) — not Hobby Vercel as a compliance story  
+1. **Render Free Postgres — EXTERNAL connection string** (same DB as today until ~2026-10-15).  
+   Internal hostname (`dpg-…-a` without `.oregon-postgres.render.com`) **will not work** from Vercel.  
+   Dashboard → Postgres → **External** URL. Append `?sslmode=require` if missing.
+2. **Neon free** for demo only — **not** Scale / HIPAA / BAA yet.
 
-## Env checklist
+Do **not** flip to Neon Scale+HIPAA in this migrate.
 
-- `AUTH_SECRET` (required)
-- `APP_MODE=demo`
-- `REQUIRE_REDACTION_CHECK=true` (recommended)
-- Stripe test keys + `STRIPE_PRICE_ID` (optional — **last**)
-- `STRIPE_LIVE_ENABLED` only for live (do **not** set for demos)
-- `NEXT_PUBLIC_APP_URL` = deploy URL
+## Import steps (Amir clicks)
+
+1. [vercel.com](https://vercel.com) → Add New → Project → import `AmirMHasani/AppealClinic` (GitHub).
+2. Framework: Next.js (auto). Root: repo root.
+3. **Environment variables** (Production + Preview):
+
+```
+AUTH_SECRET=<same strong secret as Render>
+APP_MODE=demo
+REQUIRE_REDACTION_CHECK=true
+DATABASE_URL=<EXTERNAL Postgres URL>?sslmode=require
+NEXT_PUBLIC_APP_URL=https://<project>.vercel.app
+```
+
+Omit all `STRIPE_*` for bootstrap. Never `STRIPE_LIVE_ENABLED=true`.
+
+4. Deploy. First build runs `postinstall` → `prisma generate`.
+5. Smoke: `/api/health` → `{ ok: true, db: true }` → login `demo@appealclinic.local` / `demo1234`.
+6. Set `NEXT_PUBLIC_APP_URL` to the real `*.vercel.app` URL and redeploy if the first deploy used a placeholder.
+7. Only after smoke passes: optionally pause Render auto-deploy / sleep the web service — **do not delete** until you’re sure.
+
+## Build / install
+
+| | |
+| --- | --- |
+| Install | `npm install` (runs `prisma generate` via `postinstall`) |
+| Build | `next build` (Vercel default) |
+| Start | Vercel serverless — **do not** use `start:render` |
 
 ## Custom domain
 
-Add in Vercel Domains later; not required for first demos.
+Optional later. Not required for first demos.
 
-## Required env for hosted demo
+## PHI / BAA
 
-| Var | Notes |
-| --- | --- |
-| AUTH_SECRET | Random secret for session cookies |
-| APP_MODE | Keep `demo` until BAAs |
-| DATABASE_URL | Neon (or other) Postgres — **required**; JSON file store does not work on Vercel |
-| REQUIRE_REDACTION_CHECK | Prefer `true` on shared demos |
-
-### Neon free tier
-
-1. Create a project at https://neon.tech  
-2. Copy the connection string into Vercel → Settings → Environment Variables as `DATABASE_URL`  
-3. From your laptop (or a one-off CI step): `bun run db:generate && bun run db:push`  
-4. Redeploy
-
-Also see `docs/deploy-cheap.md` and `docs/baa-and-hosting-options.md`.
+Hobby Vercel is **not** the HIPAA story. Public demo stays synthetic. PHI path: Neon Scale + BAA + `APP_MODE=phi` checklist (`docs/phi-mode-checklist.md`).
