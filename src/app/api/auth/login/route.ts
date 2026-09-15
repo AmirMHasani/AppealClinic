@@ -7,14 +7,21 @@ async function ensureDemoLetters() {
   const seeded = await seedDemoCases(false);
   const settings = await getSettings();
   for (const s of seeded) {
-    const c = await getCase(s.id);
-    if (c && !c.letter_markdown) {
-      const result = await generateAppeal(c, settings);
-      await updateCase(c.id, {
-        letter_markdown: result.letter_markdown,
-        checklist: result.checklist,
-        gaps: result.gaps,
-      });
+    try {
+      const c = await getCase(s.id);
+      if (c && !c.letter_markdown) {
+        const result = await generateAppeal(c, settings);
+        await updateCase(c.id, {
+          letter_markdown: result.letter_markdown,
+          checklist: result.checklist,
+          gaps: result.gaps,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[ensureDemoLetters] Skipping case ${s.id}: ${message}`
+      );
     }
   }
 }
