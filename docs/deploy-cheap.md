@@ -234,3 +234,7 @@ Events: `checkout.session.completed`, `customer.subscription.updated`, `customer
 ## PHI reminder
 
 This Render Free demo is **synthetic / demo-only** until a BAA path is in place. Do not load real patient data. Redaction-first UX stays on; treat the public URL as a product walkthrough, not a clinic system of record.
+
+## Neon PHI cutover (later — do not execute now)
+
+Amir locked PHI DB = **Neon Scale + HIPAA BAA**. Stay on Render Free web; do not provision Starter/Fly. Free Postgres expires ~**2026-10-15**. Runbook: `docs/neon-cutover.md`. Do **not** change live `DATABASE_URL` or `APP_MODE` until Amir provisions Neon and signs the BAA. Stripe stays last.
