@@ -4,6 +4,7 @@ import { createCase, listCases, seedDemoCases, statusCounts, writeAudit } from "
 import {
   decideRedaction,
   redactionBlockedResponse,
+  refusePhiWorkflowIfNeeded,
 } from "@/lib/redaction-guard";
 import type { AppealCase } from "@/lib/types";
 
@@ -22,6 +23,9 @@ export async function POST(req: Request) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
+
+  const phiBlock = refusePhiWorkflowIfNeeded(req, body);
+  if (phiBlock) return phiBlock;
 
   const decision = decideRedaction({
     meta: body.meta,

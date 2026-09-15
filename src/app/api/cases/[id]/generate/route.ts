@@ -5,6 +5,7 @@ import { generateAppeal } from "@/lib/generator/generateAppeal";
 import {
   decideRedaction,
   redactionBlockedResponse,
+  refusePhiWorkflowIfNeeded,
 } from "@/lib/redaction-guard";
 
 export async function POST(
@@ -23,6 +24,9 @@ export async function POST(
   } catch {
     body = {};
   }
+
+  const phiBlock = refusePhiWorkflowIfNeeded(req, body);
+  if (phiBlock) return phiBlock;
 
   const decision = decideRedaction({
     meta: body.meta ?? c.meta,

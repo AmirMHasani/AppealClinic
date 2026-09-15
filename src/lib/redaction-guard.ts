@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireRedactionCheck } from "@/lib/env";
+import {
+  isPhiMode,
+  phiForbiddenPayload,
+  requestDeclaresPhiIntent,
+  requireRedactionCheck,
+} from "@/lib/env";
 import type { RedactionHit } from "@/lib/redaction";
 import { scanCasePayload } from "@/lib/redaction";
 
@@ -12,7 +17,8 @@ export type RedactionDecision = {
 /**
  * Always compute hits.
  * - SSN hits: always hard-block (400)
- * - Other kinds: hard-block when REQUIRE_REDACTION_CHECK=true; soft-warn otherwise
+ * - Other kinds: hard-block when REQUIRE_REDACTION_CHECK is on (default true);
+ *   soft-warn when explicitly disabled
  */
 export function decideRedaction(payload: unknown): RedactionDecision {
   const hits = scanCasePayload(payload);
@@ -40,4 +46,18 @@ export function redactionBlockedResponse(hits: RedactionHit[]) {
     },
     { status: 400 }
   );
+}
+
+/**
+ * If the client opts into a PHI workflow (header or body intent) while
+ * APP_MODE !== phi, return HTTP 403. Demo/synthetic create/update/generate
+ * without PHI intent continues to work.
+ */
+export function refusePhiWorkflowIfNeeded(
+  req: Request,
+  body?: unknown
+): NextResponse | null {
+  if (!requestDeclaresPhiIntent(req, body)) return null;
+  if (isPhiMode()) return null;
+  return NextResponse.json(phiForbiddenPayload(), { status: 403 });
 }

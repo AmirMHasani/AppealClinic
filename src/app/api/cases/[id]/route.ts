@@ -4,6 +4,7 @@ import { deleteCase, getCase, updateCase, writeAudit } from "@/lib/db";
 import {
   decideRedaction,
   redactionBlockedResponse,
+  refusePhiWorkflowIfNeeded,
 } from "@/lib/redaction-guard";
 
 export async function GET(
@@ -26,6 +27,9 @@ export async function PUT(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const body = await req.json();
+
+  const phiBlock = refusePhiWorkflowIfNeeded(req, body);
+  if (phiBlock) return phiBlock;
 
   const decision = decideRedaction({
     meta: body.meta,
