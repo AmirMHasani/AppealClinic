@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { getSession } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
-import { createUser, listUsers } from "@/lib/db";
+import { createUser, listUsers, writeAudit } from "@/lib/db";
 
 const MIN_PASSWORD = 8;
 
-/** Public staff profile — never include password hashes. */
 function publicUser(u: { id: string; email: string; name: string }) {
   return { id: u.id, email: u.email, name: u.name };
 }
@@ -16,10 +15,13 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const users = await listUsers();
+  const users = await listUsers(session.clinicId);
   return NextResponse.json({
     users: users.map(publicUser),
-    note: "Single demo clinic (APP_MODE=demo) — no clinicId tenancy yet (Phase 2).",
+    clinicId: session.clinicId,
+    clinicName: session.clinicName,
+    role: session.role,
+    note: "Staff listed are members of your clinic only (Phase 2 tenancy).",
   });
 }
 
@@ -57,11 +59,23 @@ export async function POST(req: Request) {
   }
 
   try {
-    const user = await createUser({
-      id: `user-${uuid().slice(0, 8)}`,
-      email,
-      name,
-      passwordHash: hashPassword(password),
+    const user = await createUser(
+      {
+        id: `user-${uuid().slice(0, 8)}`,
+        email,
+        name,
+        passwordHash: hashPassword(password),
+      },
+      session.clinicId,
+      "coordinator"
+    );
+    await writeAudit({
+      clinicId: session.clinicId,
+      userId: session.id,
+      action: "user.create",
+      entityType: "user",
+      entityId: user.id,
+      meta: { email: user.email },
     });
     return NextResponse.json({ user: publicUser(user) }, { status: 201 });
   } catch (err) {
