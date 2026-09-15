@@ -1,132 +1,53 @@
 import fs from "fs";
 import path from "path";
 import { v4 as uuid } from "uuid";
-import type { AppealCase, ClinicSettings, DemoUser, Store } from "@/lib/types";
-import { DEMO_CASES, DEFAULT_SETTINGS, DEMO_USER } from "./seed";
-import { DEMO_PASSWORD_HASH, isScryptHash } from "@/lib/auth/password";
+import type {
+  AppealCase,
+  AuditEventRecord,
+  ClinicRecord,
+  DemoUser,
+  MembershipRecord,
+  MembershipRole,
+} from "@/lib/types";
+import { DEMO_CLINIC_ID } from "@/lib/tenancy";
+import { DEMO_CASES, DEMO_USER } from "./seed";
+import type { AuditWriteInput } from "./audit";
+import { makeAuditRecord } from "./audit";
+import {
+  ensureStore,
+  writeStore,
+  nowIso,
+  ensureTenancyInStore,
+  jsonGetStore,
+  jsonListCases,
+  DATA_DIR,
+} from "./json-store-tenancy";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const STORE_PATH = path.join(DATA_DIR, "store.json");
+export {
+  jsonGetStore,
+  jsonSaveStore,
+  jsonGetMembershipForUser,
+  jsonGetSettings,
+  jsonUpdateSettings,
+  jsonListCases,
+  jsonGetCase,
+  jsonCreateCase,
+} from "./json-store-tenancy";
 
-function migrateUser(u: DemoUser & { password?: string }): DemoUser {
-  if (u.passwordHash && isScryptHash(u.passwordHash)) {
-    return { id: u.id, email: u.email, name: u.name, passwordHash: u.passwordHash };
-  }
-  if (u.password === "demo1234" || (!u.passwordHash && u.email === DEMO_USER.email)) {
-    return { id: u.id, email: u.email, name: u.name, passwordHash: DEMO_PASSWORD_HASH };
-  }
-  if (u.password && !isScryptHash(u.password)) {
-    // leave plaintext in passwordHash temporarily; verifyCredentials will upgrade
-    return {
-      id: u.id,
-      email: u.email,
-      name: u.name,
-      passwordHash: u.password,
-      password: u.password,
-    };
-  }
-  return {
-    id: u.id,
-    email: u.email,
-    name: u.name,
-    passwordHash: u.passwordHash || u.password || DEMO_PASSWORD_HASH,
-  };
-}
-
-function defaultStore(): Store {
-  return {
-    users: [DEMO_USER],
-    settings: DEFAULT_SETTINGS,
-    cases: [],
-    seeded: false,
-  };
-}
-
-function ensureStore(): Store {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(STORE_PATH)) {
-    const initial = defaultStore();
-    fs.writeFileSync(STORE_PATH, JSON.stringify(initial, null, 2));
-    return initial;
-  }
-  const raw = fs.readFileSync(STORE_PATH, "utf8");
-  const parsed = JSON.parse(raw) as Store;
-  let dirty = false;
-  parsed.users = (parsed.users || []).map((u) => {
-    const m = migrateUser(u as DemoUser & { password?: string });
-    if (m.passwordHash !== (u as DemoUser).passwordHash) dirty = true;
-    return m;
-  });
-  if (!parsed.users.length) {
-    parsed.users = [DEMO_USER];
-    dirty = true;
-  }
-  if (dirty) writeStore(parsed);
-  return parsed;
-}
-
-function writeStore(store: Store) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
-}
-
-export function jsonGetStore(): Store {
-  return ensureStore();
-}
-
-export function jsonSaveStore(store: Store) {
-  writeStore(store);
-}
-
-export function jsonGetSettings(): ClinicSettings {
-  return jsonGetStore().settings;
-}
-
-export function jsonUpdateSettings(patch: Partial<ClinicSettings>): ClinicSettings {
-  const store = jsonGetStore();
-  store.settings = { ...store.settings, ...patch };
-  writeStore(store);
-  return store.settings;
-}
-
-export function jsonListCases(): AppealCase[] {
-  return jsonGetStore().cases.sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-}
-
-export function jsonGetCase(id: string): AppealCase | undefined {
-  return jsonGetStore().cases.find((c) => c.id === id);
-}
-
-export function jsonCreateCase(
-  data: Omit<AppealCase, "id" | "created_at" | "updated_at" | "outcome"> & {
-    outcome?: AppealCase["outcome"];
-  }
-): AppealCase {
-  const store = jsonGetStore();
-  const now = new Date().toISOString();
-  const c: AppealCase = {
-    ...data,
-    id: uuid(),
-    created_at: now,
-    updated_at: now,
-    outcome: data.outcome ?? { status: "draft" },
-  };
-  store.cases.push(c);
-  writeStore(store);
-  return c;
-}
-
-export function jsonUpdateCase(id: string, patch: Partial<AppealCase>): AppealCase | null {
-  const store = jsonGetStore();
-  const idx = store.cases.findIndex((c) => c.id === id);
+export function jsonUpdateCase(
+  clinicId: string,
+  id: string,
+  patch: Partial<AppealCase>
+): AppealCase | null {
+  const store = ensureStore();
+  const idx = store.cases.findIndex((c) => c.id === id && c.clinicId === clinicId);
   if (idx < 0) return null;
   const updated: AppealCase = {
     ...store.cases[idx],
     ...patch,
     id,
-    updated_at: new Date().toISOString(),
+    clinicId,
+    updated_at: nowIso(),
     outcome: patch.outcome
       ? { ...store.cases[idx].outcome, ...patch.outcome }
       : store.cases[idx].outcome,
@@ -136,23 +57,27 @@ export function jsonUpdateCase(id: string, patch: Partial<AppealCase>): AppealCa
   return updated;
 }
 
-export function jsonDeleteCase(id: string): boolean {
-  const store = jsonGetStore();
+export function jsonDeleteCase(clinicId: string, id: string): boolean {
+  const store = ensureStore();
   const before = store.cases.length;
-  store.cases = store.cases.filter((c) => c.id !== id);
+  store.cases = store.cases.filter((c) => !(c.id === id && c.clinicId === clinicId));
   writeStore(store);
   return store.cases.length < before;
 }
 
-export function jsonSeedDemoCases(force = false): AppealCase[] {
-  const store = jsonGetStore();
-  if (store.seeded && !force) return store.cases;
+export function jsonSeedDemoCases(clinicId: string, force = false): AppealCase[] {
+  const store = ensureStore();
+  const target = clinicId || DEMO_CLINIC_ID;
+  if (store.seeded && !force) return jsonListCases(target);
   if (force) {
-    store.cases = store.cases.filter((c) => !c.id.startsWith("demo-"));
+    store.cases = store.cases.filter(
+      (c) => !(c.clinicId === target && c.id.startsWith("demo-"))
+    );
   }
-  const now = new Date().toISOString();
+  const now = nowIso();
   const seeded = DEMO_CASES.map((c) => ({
     ...c,
+    clinicId: target,
     created_at: c.created_at || now,
     updated_at: now,
   }));
@@ -162,16 +87,16 @@ export function jsonSeedDemoCases(force = false): AppealCase[] {
     else store.cases.push(c);
   }
   store.seeded = true;
-  // Ensure demo user hash is current
   const ui = store.users.findIndex((u) => u.id === DEMO_USER.id);
   if (ui >= 0) store.users[ui] = DEMO_USER;
   else store.users.push(DEMO_USER);
+  ensureTenancyInStore(store);
   writeStore(store);
   return seeded;
 }
 
-export function jsonStatusCounts() {
-  const cases = jsonListCases();
+export function jsonStatusCounts(clinicId: string) {
+  const cases = jsonListCases(clinicId);
   const counts: Record<string, number> = {
     draft: 0,
     ready: 0,
@@ -188,9 +113,7 @@ export function jsonStatusCounts() {
 }
 
 export function jsonFindUserByEmail(email: string): DemoUser | undefined {
-  return jsonGetStore().users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
+  return jsonGetStore().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 }
 
 export function jsonMigrateUserPasswordHash(id: string, passwordHash: string): void {
@@ -211,11 +134,32 @@ export function jsonListUsers(): DemoUser[] {
   }));
 }
 
-export function jsonCreateUser(user: DemoUser): DemoUser {
-  const store = jsonGetStore();
-  const exists = store.users.some(
-    (u) => u.email.toLowerCase() === user.email.toLowerCase()
+export function jsonListUsersForClinic(clinicId: string): DemoUser[] {
+  const store = ensureStore();
+  const userIds = new Set(
+    store.memberships.filter((m) => m.clinicId === clinicId).map((m) => m.userId)
   );
+  return store.users
+    .filter((u) => userIds.has(u.id))
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      passwordHash: u.passwordHash,
+    }));
+}
+
+export function jsonCreateUser(user: DemoUser): DemoUser {
+  return jsonCreateUserInClinic(DEMO_CLINIC_ID, user, "coordinator");
+}
+
+export function jsonCreateUserInClinic(
+  clinicId: string,
+  user: DemoUser,
+  role: MembershipRole = "coordinator"
+): DemoUser {
+  const store = ensureStore();
+  const exists = store.users.some((u) => u.email.toLowerCase() === user.email.toLowerCase());
   if (exists) throw new Error("DUPLICATE_EMAIL");
   const row: DemoUser = {
     id: user.id,
@@ -224,8 +168,42 @@ export function jsonCreateUser(user: DemoUser): DemoUser {
     passwordHash: user.passwordHash,
   };
   store.users.push(row);
+  store.memberships.push({
+    id: `mem-${uuid().slice(0, 12)}`,
+    userId: row.id,
+    clinicId,
+    role,
+    created_at: nowIso(),
+  });
   writeStore(store);
   return row;
+}
+
+export function jsonWriteAudit(input: AuditWriteInput): void {
+  const store = ensureStore();
+  const rec = makeAuditRecord(input);
+  store.auditEvents.push(rec);
+  // Cap audit log size in JSON path
+  if (store.auditEvents.length > 2000) {
+    store.auditEvents = store.auditEvents.slice(-1500);
+  }
+  writeStore(store);
+}
+
+export function jsonDeleteClinicData(clinicId: string): { deletedCases: number } {
+  const store = ensureStore();
+  const before = store.cases.length;
+  store.cases = store.cases.filter((c) => c.clinicId !== clinicId);
+  if (clinicId === DEMO_CLINIC_ID) store.seeded = false;
+  writeStore(store);
+  return { deletedCases: before - store.cases.length };
+}
+
+export function jsonListAuditEvents(clinicId: string, limit = 100): AuditEventRecord[] {
+  return ensureStore()
+    .auditEvents.filter((e) => e.clinicId === clinicId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit);
 }
 
 export type SubscriptionEntitlement = {
@@ -237,7 +215,7 @@ export type SubscriptionEntitlement = {
 
 const META_PATH = path.join(DATA_DIR, "app-meta.json");
 
-function defaultMeta(): SubscriptionEntitlement & { seeded?: boolean } {
+function defaultMeta(): SubscriptionEntitlement {
   return {
     planEntitled: false,
     subscriptionStatus: null,
@@ -271,3 +249,6 @@ export function jsonSetSubscriptionEntitlement(
   writeMeta(next);
   return next;
 }
+
+// re-export types used elsewhere
+export type { ClinicRecord, MembershipRecord };
