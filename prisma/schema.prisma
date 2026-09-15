@@ -8,16 +8,45 @@ datasource db {
 }
 
 model User {
-  id           String   @id
-  email        String   @unique
+  id           String       @id
+  email        String       @unique
   passwordHash String
   name         String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
 }
 
+model Clinic {
+  id          String          @id
+  name        String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  memberships Membership[]
+  settings    ClinicSettings?
+  cases       AppealCase[]
+  auditEvents AuditEvent[]
+}
+
+/// Roles: owner | coordinator
+model Membership {
+  id        String   @id
+  userId    String
+  clinicId  String
+  role      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clinicId])
+  @@index([userId])
+  @@index([clinicId])
+}
+
+/// Settings row id == clinicId (one letterhead profile per clinic).
 model ClinicSettings {
-  id                String   @id @default("default")
+  id                String   @id
+  clinicId          String   @unique @default("clinic-demo")
   clinicName        String
   addressLine1      String
   addressLine2      String?
@@ -30,10 +59,12 @@ model ClinicSettings {
   signerName        String?
   signerCredentials String?
   updatedAt         DateTime @updatedAt
+  clinic            Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 }
 
 model AppealCase {
   id             String   @id
+  clinicId       String   @default("clinic-demo")
   createdAt      DateTime
   updatedAt      DateTime
   meta           Json
@@ -43,15 +74,33 @@ model AppealCase {
   checklist      Json?
   gaps           Json?
   outcome        Json
+  clinic         Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
 }
 
-/// Single-clinic demo meta (Phase 1 — no clinicId tenancy yet).
+model AuditEvent {
+  id         String   @id
+  clinicId   String
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, createdAt])
+  @@index([action])
+}
+
+/// Single-row Stripe / seed meta for the hosted demo (Stripe remains last).
 model AppMeta {
-  id                     String   @id @default("default")
-  seeded                 Boolean  @default(false)
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?
-  subscriptionStatus     String?
-  planEntitled           Boolean  @default(false)
-  stripeUpdatedAt        DateTime?
+  id                   String    @id @default("default")
+  seeded               Boolean   @default(false)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  planEntitled         Boolean   @default(false)
+  stripeUpdatedAt      DateTime?
 }
