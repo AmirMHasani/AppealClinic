@@ -329,3 +329,11 @@ export async function prismaMigrateUserPasswordHash(
 ): Promise<void> {
   await client().user.update({ where: { id }, data: { passwordHash } });
 }
+
+export {
+  prismaListUsers,
+  prismaCreateUser,
+  prismaGetSubscriptionEntitlement,
+  prismaSetSubscriptionEntitlement,
+} from "./prisma-users";
+export type { SubscriptionEntitlement } from "./prisma-users";
