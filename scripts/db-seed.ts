@@ -1,11 +1,13 @@
 /**
- * Upsert demo user + default settings + AppMeta (+ optional demo cases)
+ * Upsert Demo Clinic + demo user (owner) + settings + AppMeta (+ optional demo cases)
  * when DATABASE_URL is set. Safe to re-run (no force-reset).
  *
  * Usage: bun run db:seed   or   npx tsx scripts/db-seed.ts
+ *        bun run db:seed -- --cases
  */
 import { Prisma, PrismaClient } from "@prisma/client";
 import { DEMO_CASES, DEFAULT_SETTINGS, DEMO_USER } from "../src/lib/db/seed";
+import { DEMO_CLINIC_ID, DEMO_CLINIC_NAME } from "../src/lib/tenancy";
 
 if (!process.env.DATABASE_URL?.trim()) {
   console.error("DATABASE_URL unset — db:seed is Postgres-only (JSON uses login seed).");
@@ -33,6 +35,13 @@ function fromSettings(s: typeof DEFAULT_SETTINGS) {
 async function main() {
   const includeCases = process.argv.includes("--cases");
 
+  await prisma.clinic.upsert({
+    where: { id: DEMO_CLINIC_ID },
+    create: { id: DEMO_CLINIC_ID, name: DEMO_CLINIC_NAME },
+    update: { name: DEMO_CLINIC_NAME },
+  });
+  console.log(`upserted clinic ${DEMO_CLINIC_ID}`);
+
   await prisma.user.upsert({
     where: { email: DEMO_USER.email },
     create: {
@@ -48,12 +57,33 @@ async function main() {
   });
   console.log(`upserted user ${DEMO_USER.email}`);
 
+  await prisma.membership.upsert({
+    where: {
+      userId_clinicId: { userId: DEMO_USER.id, clinicId: DEMO_CLINIC_ID },
+    },
+    create: {
+      id: "mem-demo-owner",
+      userId: DEMO_USER.id,
+      clinicId: DEMO_CLINIC_ID,
+      role: "owner",
+    },
+    update: { role: "owner" },
+  });
+  console.log("upserted demo owner membership");
+
+  // Remove legacy default settings if present
+  await prisma.clinicSettings.deleteMany({ where: { id: "default" } });
+
   await prisma.clinicSettings.upsert({
-    where: { id: "default" },
-    create: { id: "default", ...fromSettings(DEFAULT_SETTINGS) },
+    where: { id: DEMO_CLINIC_ID },
+    create: {
+      id: DEMO_CLINIC_ID,
+      clinicId: DEMO_CLINIC_ID,
+      ...fromSettings(DEFAULT_SETTINGS),
+    },
     update: fromSettings(DEFAULT_SETTINGS),
   });
-  console.log("upserted ClinicSettings default");
+  console.log(`upserted ClinicSettings ${DEMO_CLINIC_ID}`);
 
   await prisma.appMeta.upsert({
     where: { id: "default" },
@@ -70,6 +100,7 @@ async function main() {
         where: { id: c.id },
         create: {
           id: c.id,
+          clinicId: DEMO_CLINIC_ID,
           createdAt,
           updatedAt: now,
           meta: c.meta as unknown as Prisma.InputJsonValue,
@@ -81,6 +112,7 @@ async function main() {
           outcome: c.outcome as unknown as Prisma.InputJsonValue,
         },
         update: {
+          clinicId: DEMO_CLINIC_ID,
           updatedAt: now,
           meta: c.meta as unknown as Prisma.InputJsonValue,
           denial: c.denial as unknown as Prisma.InputJsonValue,
@@ -93,7 +125,7 @@ async function main() {
       });
     }
     await prisma.appMeta.update({ where: { id: "default" }, data: { seeded: true } });
-    console.log(`upserted ${DEMO_CASES.length} demo cases`);
+    console.log(`upserted ${DEMO_CASES.length} demo cases into ${DEMO_CLINIC_ID}`);
   } else {
     console.log("skip demo cases (pass --cases to upsert)");
   }
