@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AppNav } from "@/components/AppNav";
 import type { ClinicSettings } from "@/lib/types";
 
+type StaffUser = { id: string; email: string; name: string };
+
 export default function SettingsPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
@@ -12,11 +14,26 @@ export default function SettingsPage() {
   const [savedMsg, setSavedMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [teamName, setTeamName] = useState("");
+  const [teamEmail, setTeamEmail] = useState("");
+  const [teamPassword, setTeamPassword] = useState("");
+  const [teamMsg, setTeamMsg] = useState("");
+  const [teamError, setTeamError] = useState("");
+  const [teamBusy, setTeamBusy] = useState(false);
+
   async function loadSettings() {
     const res = await fetch("/api/settings");
     const data = await res.json();
     setSettings(data.settings);
     return data.settings as ClinicSettings;
+  }
+
+  async function loadStaff() {
+    const res = await fetch("/api/users");
+    if (!res.ok) return;
+    const data = await res.json();
+    setStaff(data.users || []);
   }
 
   useEffect(() => {
@@ -29,6 +46,7 @@ export default function SettingsPage() {
       const { user } = await me.json();
       setUserName(user.name);
       await loadSettings();
+      await loadStaff();
     })();
   }, [router]);
 
@@ -46,7 +64,6 @@ export default function SettingsPage() {
       setSettings(data.settings);
       setSavedMsg("Saved to clinic profile — used on next letter generate");
     } else {
-      // Re-fetch to confirm persistence path
       await loadSettings();
       setSavedMsg("Saved to clinic profile — used on next letter generate");
     }
@@ -74,6 +91,34 @@ export default function SettingsPage() {
     setSavedMsg("Reset to demo defaults — used on next letter generate");
     setSaving(false);
     setTimeout(() => setSavedMsg(""), 4000);
+  }
+
+  async function addStaff(e: React.FormEvent) {
+    e.preventDefault();
+    setTeamBusy(true);
+    setTeamError("");
+    setTeamMsg("");
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: teamName,
+        email: teamEmail,
+        password: teamPassword,
+      }),
+    });
+    const data = await res.json();
+    setTeamBusy(false);
+    if (!res.ok) {
+      setTeamError(data.error || "Could not create staff user");
+      return;
+    }
+    setTeamMsg(`Created ${data.user.email} — they can log in now`);
+    setTeamName("");
+    setTeamEmail("");
+    setTeamPassword("");
+    await loadStaff();
+    setTimeout(() => setTeamMsg(""), 5000);
   }
 
   if (!settings) {
@@ -112,6 +157,17 @@ export default function SettingsPage() {
         <p className="page-subtitle">
           Letterhead used on generated appeal letters.
         </p>
+
+        <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-950">
+          <p className="font-semibold tracking-tight">
+            Single demo clinic · APP_MODE=demo
+          </p>
+          <p className="mt-1 text-amber-900/90">
+            Staff users share this one clinic. There is{" "}
+            <strong>no clinicId tenancy yet</strong> (Phase 2). Do not treat this
+            as multi-tenant production.
+          </p>
+        </div>
 
         <div className="mt-4 rounded border border-brand-200 bg-brand-50 px-3 py-2.5 text-[12.5px] text-brand-900">
           <p className="font-semibold tracking-tight">Security &amp; data posture</p>
@@ -194,6 +250,93 @@ export default function SettingsPage() {
             )}
           </div>
         </form>
+
+        <section id="team" className="card-pad mt-6 space-y-3">
+          <div>
+            <p className="ops-kicker">Team</p>
+            <h2 className="mt-1 font-serif text-lg font-semibold tracking-tight text-ink">
+              Staff users
+            </h2>
+            <p className="mt-1 text-[12.5px] text-ink-muted">
+              Add email + password accounts for the shared demo clinic. Demo login
+              still works; new staff can sign in with their own credentials.
+            </p>
+          </div>
+
+          <ul className="divide-y divide-paper-rule rounded border border-paper-rule">
+            {staff.map((u) => (
+              <li
+                key={u.id}
+                className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="text-[13px] font-medium text-ink">{u.name}</span>
+                <span className="font-mono text-[12px] text-ink-muted">{u.email}</span>
+              </li>
+            ))}
+            {!staff.length && (
+              <li className="px-3 py-2 text-[12.5px] text-ink-faint">No staff yet</li>
+            )}
+          </ul>
+
+          <form onSubmit={addStaff} className="space-y-3 border-t border-paper-rule pt-3">
+            <p className="text-[12px] font-semibold uppercase tracking-clinical text-ink-faint">
+              Add staff user
+            </p>
+            <label className="block">
+              <span className="label">Name</span>
+              <input
+                className="field"
+                value={teamName}
+                required
+                minLength={2}
+                onChange={(e) => setTeamName(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label className="block">
+              <span className="label">Email</span>
+              <input
+                className="field"
+                type="email"
+                value={teamEmail}
+                required
+                onChange={(e) => setTeamEmail(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label className="block">
+              <span className="label">Password (min 8)</span>
+              <input
+                className="field"
+                type="password"
+                value={teamPassword}
+                required
+                minLength={8}
+                onChange={(e) => setTeamPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="submit"
+                disabled={teamBusy}
+                className="btn-primary btn-block sm:!w-auto"
+              >
+                {teamBusy ? "Creating…" : "Add staff user"}
+              </button>
+              {teamMsg && (
+                <span className="text-[12.5px] font-medium text-clinical-ok" role="status">
+                  {teamMsg}
+                </span>
+              )}
+              {teamError && (
+                <span className="text-[12.5px] font-medium text-red-700" role="alert">
+                  {teamError}
+                </span>
+              )}
+            </div>
+          </form>
+        </section>
       </main>
     </div>
   );
