@@ -5,8 +5,15 @@ export function buildChecklistAndGaps(c: AppealCase): {
   checklist: string[];
   gaps: string[];
 } {
-  const indication = INDICATIONS[c.meta.indication];
-  const payer = PAYERS[c.denial.payer_id];
+  const indication = (c.meta?.indication && INDICATIONS[c.meta.indication]) || {
+    label: "the indicated condition",
+    short: "unknown",
+    severityFields: [] as ("bsaPercent" | "iga" | "pga" | "dlqi" | "hurleyStage")[],
+  };
+  const payer = (c.denial?.payer_id && PAYERS[c.denial.payer_id]) || {
+    name: "Unknown payer",
+    citationSlots: [] as { id: string; title: string; url?: string; notes?: string }[],
+  };
   const checklist: string[] = [
     "Signed appeal / medical necessity letter",
     "Copy of denial letter / EOB",
@@ -48,7 +55,7 @@ export function buildChecklistAndGaps(c: AppealCase): {
   if (!c.clinical.labs_imaging?.trim()) {
     gaps.push("Labs/imaging blank — add TB/HepB/baseline labs if required for this agent");
   }
-  for (const slot of payer.citationSlots) {
+  for (const slot of payer.citationSlots || []) {
     const urlEmpty = !slot.url?.trim();
     const notesPortal = (slot.notes ?? "").toLowerCase().includes("portal");
     if (urlEmpty || notesPortal) {
