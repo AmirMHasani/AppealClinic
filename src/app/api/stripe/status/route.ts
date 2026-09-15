@@ -6,6 +6,7 @@ import {
   stripeKeysPresent,
   stripeLiveEnabled,
 } from "@/lib/env";
+import { getSubscriptionEntitlement } from "@/lib/db";
 
 export async function GET() {
   const user = await getSession();
@@ -14,6 +15,7 @@ export async function GET() {
   }
 
   const gate = stripeCheckoutAllowed();
+  const entitlement = await getSubscriptionEntitlement();
 
   return NextResponse.json({
     keysPresent: stripeKeysPresent(),
@@ -22,5 +24,7 @@ export async function GET() {
     checkoutAllowed: gate.allowed,
     mode: gate.mode ?? "none",
     reason: gate.reason ?? null,
+    planEntitled: entitlement.planEntitled,
+    subscriptionStatus: entitlement.subscriptionStatus,
   });
 }

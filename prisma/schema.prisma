@@ -45,7 +45,13 @@ model AppealCase {
   outcome        Json
 }
 
+/// Single-clinic demo meta (Phase 1 — no clinicId tenancy yet).
 model AppMeta {
-  id     String  @id @default("default")
-  seeded Boolean @default(false)
+  id                     String   @id @default("default")
+  seeded                 Boolean  @default(false)
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  subscriptionStatus     String?
+  planEntitled           Boolean  @default(false)
+  stripeUpdatedAt        DateTime?
 }

@@ -14,6 +14,8 @@ export function EnvironmentBanner() {
       </span>
       <span className="mx-1.5 text-amber-800/70">·</span>
       Not for real PHI — synthetic or de-identified data only
+      <span className="mx-1.5 text-amber-800/70">·</span>
+      Single demo clinic (APP_MODE=demo) — no clinicId tenancy yet (Phase 2)
     </div>
   );
 }
