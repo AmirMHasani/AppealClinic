@@ -201,3 +201,73 @@ export function jsonMigrateUserPasswordHash(id: string, passwordHash: string): v
   delete u.password;
   writeStore(store);
 }
+
+export function jsonListUsers(): DemoUser[] {
+  return jsonGetStore().users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    passwordHash: u.passwordHash,
+  }));
+}
+
+export function jsonCreateUser(user: DemoUser): DemoUser {
+  const store = jsonGetStore();
+  const exists = store.users.some(
+    (u) => u.email.toLowerCase() === user.email.toLowerCase()
+  );
+  if (exists) throw new Error("DUPLICATE_EMAIL");
+  const row: DemoUser = {
+    id: user.id,
+    email: user.email.toLowerCase(),
+    name: user.name,
+    passwordHash: user.passwordHash,
+  };
+  store.users.push(row);
+  writeStore(store);
+  return row;
+}
+
+export type SubscriptionEntitlement = {
+  planEntitled: boolean;
+  subscriptionStatus: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+const META_PATH = path.join(DATA_DIR, "app-meta.json");
+
+function defaultMeta(): SubscriptionEntitlement & { seeded?: boolean } {
+  return {
+    planEntitled: false,
+    subscriptionStatus: null,
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+  };
+}
+
+function readMeta(): SubscriptionEntitlement {
+  if (!fs.existsSync(META_PATH)) return defaultMeta();
+  try {
+    return { ...defaultMeta(), ...JSON.parse(fs.readFileSync(META_PATH, "utf8")) };
+  } catch {
+    return defaultMeta();
+  }
+}
+
+function writeMeta(meta: SubscriptionEntitlement) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
+}
+
+export function jsonGetSubscriptionEntitlement(): SubscriptionEntitlement {
+  return readMeta();
+}
+
+export function jsonSetSubscriptionEntitlement(
+  patch: Partial<SubscriptionEntitlement>
+): SubscriptionEntitlement {
+  const next = { ...readMeta(), ...patch };
+  writeMeta(next);
+  return next;
+}
