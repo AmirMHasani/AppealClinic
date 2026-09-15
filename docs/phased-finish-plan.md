@@ -69,13 +69,17 @@
 
 **Goal:** Legal/ops posture that matches $249 clinic trust.
 
-| Work | Owner |
-| --- | --- |
-| Pick BAA-capable Postgres + app host (Neon/Render paid / Fly / etc. per `docs/baa-and-hosting-options.md`) | Amir + CoS |
-| Vendor BAAs signed; customer BAA template + subprocessors list | Amir (+ counsel if needed) |
-| Product flag: `APP_MODE=phi` only when BAAs live; keep demo mode for public URL | Engineering |
-| If LLM polish used: Azure OpenAI or Bedrock with BAA — else keep rules-only | Amir + Engineering |
-| Migrate off Free Render sleep / free DB for any PHI pilot | CoS / Engineering |
+**Status (2026-09-15):** Engineering prep **in progress** — product flag `APP_MODE=phi` landed; docs for Neon cutover + subprocessors + checklist. **No Neon provision / no Render env flip / no paid host.**
+
+| Work | Owner | Status |
+| --- | --- | --- |
+| PHI DB = **Neon Scale + BAA**; demo DB = Render Free until cutover (~expires 2026-10-15) | Amir locked | Path locked; provision pending Amir |
+| App host = **Render Free** until closer to PHI; paid Render TBD; no Fly/Starter now | Amir locked | Stay Free |
+| Vendor BAAs signed; customer BAA template + subprocessors list | Amir (+ counsel) | Draft `docs/subprocessors.md` |
+| Product flag: `APP_MODE=phi` only when BAAs live; public URL stays demo | Engineering | **Landed** (gate + banner + API 403) |
+| Neon cutover runbook | Engineering | `docs/neon-cutover.md` (do not execute yet) |
+| If LLM polish used: Azure OpenAI or Bedrock with BAA — else keep rules-only | Amir + Engineering | Open decision |
+| Cut over Free Postgres → Neon before PHI / before Free expiry | CoS / Engineering | Blocked on Amir Neon+BAA |
 
 **Exit:** Written path to accept PHI under BAA; public demo can stay synthetic forever.
 
@@ -123,6 +127,6 @@ Phase 4 (live Stripe + outreach)
 | Amir | CoS / Engineering / Data |
 | --- | --- |
 | Stripe account + test/live keys | Desk, tenancy, audit, packs, keep-alive |
-| BAA vendor choice + signatures | Deploy, migrate DB before Oct 15 |
+| Neon Scale+BAA + customer BAA; paid Render timing | Deploy; Neon cutover when Amir says go (before Free DB ~Oct 15) |
 | Domain DNS | Docs accuracy, pilot UX |
 | Go/no-go on clinic outreach | Smoke / health monitoring |
