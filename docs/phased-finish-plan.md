@@ -74,7 +74,7 @@
 | Work | Owner | Status |
 | --- | --- | --- |
 | PHI DB = **Neon Scale + BAA**; demo DB = Render Free until cutover (~expires 2026-10-15) | Amir locked | Path locked; provision pending Amir |
-| App host = **Render Free** until closer to PHI; paid Render TBD; no Fly/Starter now | Amir locked | Stay Free |
+| App host = **Vercel Hobby** free demo + Render Free rollback until closer to PHI; paid Render TBD; no Fly/Starter now | Amir unlocked Vercel | Prefer fastest green `*.vercel.app` |
 | Vendor BAAs signed; customer BAA template + subprocessors list | Amir (+ counsel) | Draft `docs/subprocessors.md` |
 | Product flag: `APP_MODE=phi` only when BAAs live; public URL stays demo | Engineering | **Landed** (gate + banner + API 403) |
 | Neon cutover runbook | Engineering | `docs/neon-cutover.md` (do not execute yet) |

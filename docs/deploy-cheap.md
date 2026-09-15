@@ -1,10 +1,11 @@
 # Deploy on Render Free (locked demo host)
 
 **Audience:** Amir / CoS — public demo URL at **$0**, then durable Postgres for multi-user.  
-**Locked host:** **Render Free Web Service** (Hobby workspace + Free compute).  
+**Free demo URL (current preference):** **Vercel Hobby** — see `docs/deploy-vercel.md`.  
+**Rollback host:** **Render Free Web Service** (Hobby + Free compute) — keep until Vercel smoke-passes.  
 **Live service (current):** `srv-dafi4c5g1s2s73elki0g` → **https://appealclinic.onrender.com**  
 **Postgres:** Render Free Postgres **already attached** via `DATABASE_URL` (same Blueprint / region). Instance id **`dpg-dakns77qj5pc73d7koj0-a`**. Free DB expires ~**2026-10-15** (30-day free from ~Sep 15 create) — **before expiry**, migrate to **Neon free** (paste pooled URL as `DATABASE_URL`) or **paid Render Postgres**. Do not wait until expiry day.  
-**Do not** treat Vercel as the default. Vercel remains optional only — see `docs/deploy-vercel.md`.  
+**Primary free demo:** Vercel Hobby — `docs/deploy-vercel.md`. This file remains the **Render rollback / Postgres** runbook.  
 **Stripe:** **last**. Omit all `STRIPE_*` for bootstrap demos. When ready, use **TEST** keys only (`STRIPE_LIVE_ENABLED=false`) — see paste list near the bottom and `docs/stripe-go-live.md`.  
 **PHI:** synthetic / demo data only. Do not invent or load real PHI.
 
@@ -84,7 +85,6 @@ Which runs `scripts/start-with-db.sh`:
 | `OPENAI_API_KEY` | Optional | Off is fine; rules engine is enough for demos. |
 | `STRIPE_*` (test only) | Optional | When ready for test Checkout — see paste list below. **Never** set live keys / `STRIPE_LIVE_ENABLED=true` in Phase 1. |
 | `STRIPE_LIVE_ENABLED` | **Omit or `false`** | Must stay false/unset. |
-| `PRISMA_ACCEPT_DATA_LOSS` | Optional | `true` to force Phase 2-style `db push --accept-data-loss` when `APP_MODE` is not `demo`. |
 
 ---
 
@@ -116,15 +116,15 @@ Which runs `scripts/start-with-db.sh`:
 | Phase | Command |
 | --- | --- |
 | **Build** | `npm install && npx prisma generate && npm run build` |
-| **Start** | `npm run start:render` → pre-tenancy SQL + `prisma db push` (demo may use `--accept-data-loss` once for Phase 2; **no** `--force-reset`) then `next start` |
+| **Start** | `npm run start:render` → `prisma db push` (safe, **no** force-reset) then `next start` when `DATABASE_URL` is set |
 
-Do **not** use `--force-reset` on production data.
+Do **not** use `--force-reset` or other destructive flags on production data.
 
 ### After first deploy with `DATABASE_URL`
 
 1. Open the public URL (allow cold start).
 2. Login: **`demo@appealclinic.local` / `demo1234`**
-3. `ensureTenancy` + login `seedDemoCases(false)` create Demo Clinic, demo user, settings, AppMeta, and synthetic cases if missing.
+3. `ensureDefaults` + login `seedDemoCases(false)` create demo user, settings, AppMeta, and synthetic cases if missing.
 4. Optional explicit seed from a laptop with the same URL:
 
 ```bash
@@ -195,7 +195,7 @@ Short one-pager: **`docs/keepalive.md`**.
 | **Railway** (Hobby) | Cold starts hurt; still want PaaS | Card + small spend usual. Same env; Node start. |
 | **~$5 VPS** (Hetzner / DigitalOcean) | Want always-on + control | systemd/pm2 or Docker + Caddy/Nginx TLS. |
 | **Cloudflare Pages** | — | **Not a fit** for plain `next start` + Node `fs` without OpenNext. |
-| **Vercel** | Explicit preference only | Optional — `docs/deploy-vercel.md`. Not the locked default. |
+| **Vercel Hobby** | **Preferred free demo URL** | Primary — `docs/deploy-vercel.md`. This Render doc = rollback. |
 
 ---
 
@@ -237,4 +237,4 @@ This Render Free demo is **synthetic / demo-only** until a BAA path is in place.
 
 ## Neon PHI cutover (later — do not execute now)
 
-Amir locked PHI DB = **Neon Scale + HIPAA BAA**. Stay on Render Free web; do not provision Starter/Fly. Free Postgres expires ~**2026-10-15**. Runbook: `docs/neon-cutover.md`. Do **not** change live `DATABASE_URL` or `APP_MODE` until Amir provisions Neon and signs the BAA. Stripe stays last.
+Amir locked PHI DB = **Neon Scale + HIPAA BAA**. Free demo app host = **Vercel Hobby** (Render Free = rollback). Do not provision Starter/Fly. Free Postgres expires ~**2026-10-15**. Runbook: `docs/neon-cutover.md`. Do **not** flip to PHI `DATABASE_URL` / `APP_MODE=phi` until Amir provisions Neon and signs the BAA. Stripe stays last.

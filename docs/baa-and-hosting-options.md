@@ -4,14 +4,14 @@
 **Updated:** 2026-09-15  
 **Goal:** Choose a path that is sellable to independent derm clinics without overbuilding on a ~$500 bootstrap.
 
-**Demo hosting lock (bootstrap):** Public demo URL is **locked to Render Free** — follow `docs/deploy-cheap.md`. **Stripe test is last** (after hosted demo smoke). **Vercel is optional** only (`docs/deploy-vercel.md`), not the default.
+**Demo hosting (bootstrap):** Prefer **Vercel Hobby** for the free public demo URL (`docs/deploy-vercel.md`). Keep **Render Free** live as rollback until Vercel smokes (`docs/deploy-cheap.md`). **Stripe test is last**.
 
 **Amir locks (Phase 3):**
 
 | Layer | Decision |
 | --- | --- |
 | PHI database | **Neon Postgres + HIPAA BAA** (Scale plan) — see `docs/neon-cutover.md` |
-| App host (now → near-PHI) | Stay on **Render Free** web. Do **not** provision Render Starter/paid or Fly yet. Paid Render web **TBD** closer to PHI. |
+| App host (now → near-PHI) | **Vercel Hobby** for free demo URL; keep Render Free until cutover smoke. Do **not** provision Render Starter/paid or Fly yet. Paid Render web **TBD** closer to PHI. |
 | Free Render Postgres | Demo only until cutover; expires ~**2026-10-15** |
 | Stripe | Still last (Phase 4) |
 
@@ -23,7 +23,7 @@
 
 | Piece | Status |
 | --- | --- |
-| Web | Render Free — `https://appealclinic.onrender.com` |
+| Web | Vercel Hobby (target) + Render Free rollback — `https://appealclinic.onrender.com` |
 | DB | Render Free Postgres `dpg-dakns77qj5pc73d7koj0-a` (demo) — expiry ~**2026-10-15** |
 | `APP_MODE` | `demo` (do not change on public demo) |
 | Stripe | Unset / test path only — not live |
@@ -53,7 +53,7 @@
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| App | **Render Free now**; paid Render web TBD closer to PHI | No Starter/Fly provision in this phase |
+| App | **Vercel Hobby** demo + Render Free rollback; paid Render TBD closer to PHI | No Starter/Fly provision in this phase |
 | DB (demo) | Render Free Postgres until cutover | Cheap demo; expires ~2026-10-15 |
 | DB (PHI) | **Neon Scale + BAA** | Self-serve HIPAA BAA; Free/Launch must not hold PHI |
 | LLM | **Azure OpenAI** *or* **AWS Bedrock** (or none) | Both are realistic BAA paths; core generator stays rules-based |
@@ -74,7 +74,7 @@ Details: [Neon HIPAA docs](https://neon.com/docs/security/hipaa), `docs/neon-cut
 | Item | Ballpark (USD) | Notes |
 | --- | --- | --- |
 | Domain + DNS | $10–20/yr | One-time-ish |
-| Render Free → paid later | $0 now; paid TBD | Stay Free until closer to PHI |
+| Vercel Hobby + Render Free rollback → paid later | $0 now; paid TBD | Free demo until closer to PHI |
 | Neon Scale (PHI) | Scale plan pricing | BAA path; confirm HIPAA billing note in Console |
 | Azure OpenAI / Bedrock | **Usage** | Often **$20–150+/mo** — swing factor; defer until needed |
 | Stripe | % + fixed per charge | Phase 4; customer-paid $249/mo |
@@ -101,7 +101,7 @@ Details: [Neon HIPAA docs](https://neon.com/docs/security/hipaa), `docs/neon-cut
 
 ## Recommendation
 
-**Execute Option B with Amir’s locks:** Neon for PHI DB; Render Free web until closer to PHI; Stripe last; public demo stays `APP_MODE=demo`.
+**Execute Option B with Amir’s locks:** Neon Scale+BAA for PHI DB later; Vercel Hobby free demo + Render Free rollback; Stripe last; public demo stays `APP_MODE=demo`.
 
 - Keep **Option A behaviors** (redaction-first UX) as default UX even under B.  
 - Subprocessors draft: `docs/subprocessors.md`.  
