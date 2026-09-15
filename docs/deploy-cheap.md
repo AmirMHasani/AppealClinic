@@ -58,8 +58,13 @@ npm run start:render
 
 Which runs `scripts/start-with-db.sh`:
 
-- If `DATABASE_URL` **set**: `prisma db push` (**no** `--force-reset`) → `next start`
+- If `DATABASE_URL` **set**:
+  1. Best-effort `scripts/pre-tenancy-migrate.sql` (creates **Demo Clinic**, backfills `clinicId`)
+  2. `prisma db push` — with **`--accept-data-loss`** when `APP_MODE=demo` or `PRISMA_ACCEPT_DATA_LOSS=true` (needed once for Phase 2 `ClinicSettings.clinicId` unique/FK from the old `id=default` row). **Not** `--force-reset`. `ensureTenancy()` re-seeds Demo Clinic letterhead/memberships on first request.
+  3. `next start`
 - If **unset**: `next start` only (JSON local/demo)
+
+**Phase 2 note:** Hosted demo uses `APP_MODE=demo`, so the one-time accept-data-loss path is on. For a non-demo DB with real data, run a manual SQL migrate first and omit accept-data-loss — do not blindly accept data loss on PHI.
 
 6. Set environment variables (table below). **Omit all Stripe vars.**
 7. Deploy. After first deploy **with** `DATABASE_URL`: login `demo@appealclinic.local` / `demo1234` — cases persist across sleeps.
@@ -79,6 +84,7 @@ Which runs `scripts/start-with-db.sh`:
 | `OPENAI_API_KEY` | Optional | Off is fine; rules engine is enough for demos. |
 | `STRIPE_*` (test only) | Optional | When ready for test Checkout — see paste list below. **Never** set live keys / `STRIPE_LIVE_ENABLED=true` in Phase 1. |
 | `STRIPE_LIVE_ENABLED` | **Omit or `false`** | Must stay false/unset. |
+| `PRISMA_ACCEPT_DATA_LOSS` | Optional | `true` to force Phase 2-style `db push --accept-data-loss` when `APP_MODE` is not `demo`. |
 
 ---
 
@@ -110,15 +116,15 @@ Which runs `scripts/start-with-db.sh`:
 | Phase | Command |
 | --- | --- |
 | **Build** | `npm install && npx prisma generate && npm run build` |
-| **Start** | `npm run start:render` → `prisma db push` (safe, **no** force-reset) then `next start` when `DATABASE_URL` is set |
+| **Start** | `npm run start:render` → pre-tenancy SQL + `prisma db push` (demo may use `--accept-data-loss` once for Phase 2; **no** `--force-reset`) then `next start` |
 
-Do **not** use `--force-reset` or other destructive flags on production data.
+Do **not** use `--force-reset` on production data.
 
 ### After first deploy with `DATABASE_URL`
 
 1. Open the public URL (allow cold start).
 2. Login: **`demo@appealclinic.local` / `demo1234`**
-3. `ensureDefaults` + login `seedDemoCases(false)` create demo user, settings, AppMeta, and synthetic cases if missing.
+3. `ensureTenancy` + login `seedDemoCases(false)` create Demo Clinic, demo user, settings, AppMeta, and synthetic cases if missing.
 4. Optional explicit seed from a laptop with the same URL:
 
 ```bash
