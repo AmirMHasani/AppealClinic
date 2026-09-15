@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { deleteCase, getCase, updateCase } from "@/lib/db";
+import { deleteCase, getCase, updateCase, writeAudit } from "@/lib/db";
 import {
   decideRedaction,
   redactionBlockedResponse,
@@ -13,7 +13,7 @@ export async function GET(
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
-  const c = await getCase(id);
+  const c = await getCase(user.clinicId, id);
   if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ case: c });
 }
@@ -38,8 +38,17 @@ export async function PUT(
     return redactionBlockedResponse(decision.hits);
   }
 
-  const updated = await updateCase(id, body);
+  const updated = await updateCase(user.clinicId, id, body);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await writeAudit({
+    clinicId: user.clinicId,
+    userId: user.id,
+    action: "case.update",
+    entityType: "case",
+    entityId: id,
+  });
+
   return NextResponse.json({
     case: updated,
     hits: decision.hits,
@@ -55,6 +64,15 @@ export async function DELETE(
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
-  await deleteCase(id);
+  const ok = await deleteCase(user.clinicId, id);
+  if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await writeAudit({
+    clinicId: user.clinicId,
+    userId: user.id,
+    action: "case.update",
+    entityType: "case",
+    entityId: id,
+    meta: { deleted: true },
+  });
   return NextResponse.json({ ok: true });
 }

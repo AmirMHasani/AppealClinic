@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { getCase, getSettings, updateCase } from "@/lib/db";
+import { getCase, getSettings, updateCase, writeAudit } from "@/lib/db";
 import { generateAppeal } from "@/lib/generator/generateAppeal";
 import {
   decideRedaction,
@@ -14,10 +14,9 @@ export async function POST(
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
-  const c = await getCase(id);
+  const c = await getCase(user.clinicId, id);
   if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Optional body may carry edited fields before generate; always scan case text.
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
@@ -36,8 +35,8 @@ export async function POST(
     return redactionBlockedResponse(decision.hits);
   }
 
-  const result = await generateAppeal(c, await getSettings());
-  const updated = await updateCase(id, {
+  const result = await generateAppeal(c, await getSettings(user.clinicId));
+  const updated = await updateCase(user.clinicId, id, {
     letter_markdown: result.letter_markdown,
     checklist: result.checklist,
     gaps: result.gaps,
@@ -46,6 +45,15 @@ export async function POST(
       status: c.outcome.status === "draft" ? "ready" : c.outcome.status,
     },
   });
+
+  await writeAudit({
+    clinicId: user.clinicId,
+    userId: user.id,
+    action: "case.generate",
+    entityType: "case",
+    entityId: id,
+  });
+
   return NextResponse.json({
     case: updated,
     hits: decision.hits,
