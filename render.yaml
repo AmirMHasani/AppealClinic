@@ -1,11 +1,17 @@
 # AppealClinic — Render Blueprint (Free Web Service)
 # Canonical deploy steps: docs/deploy-cheap.md
+#
+# Persistence:
+#   - DATABASE_URL unset → JSON store (ephemeral on Free)
+#   - DATABASE_URL set   → Prisma Postgres (production path)
+# Stripe: leave unset (last). No PHI.
 services:
   - type: web
     name: appealclinic
     runtime: node
     plan: free
-    buildCommand: bun install --frozen-lockfile && bunx prisma generate && bun run build
+    # prisma generate always; db-release runs migrate deploy only when DATABASE_URL is set
+    buildCommand: bun install --frozen-lockfile && bunx prisma generate && bash scripts/db-release.sh && bun run build
     startCommand: bun run start
     healthCheckPath: /
     envVars:
@@ -17,5 +23,5 @@ services:
         generateValue: true
       - key: NEXT_PUBLIC_APP_URL
         sync: false
-      # Leave DATABASE_URL unset for JSON store; set later for Neon/Render Postgres
+      # Set DATABASE_URL in the Render dashboard after creating Neon/Render Postgres.
       # Leave STRIPE_* unset (Stripe last)
