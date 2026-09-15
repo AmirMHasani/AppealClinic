@@ -130,3 +130,4 @@ Phase 4 (live Stripe + outreach)
 | Neon Scale+BAA + customer BAA; paid Render timing | Deploy; Neon cutover when Amir says go (before Free DB ~Oct 15) |
 | Domain DNS | Docs accuracy, pilot UX |
 | Go/no-go on clinic outreach | Smoke / health monitoring |
+
