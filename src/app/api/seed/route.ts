@@ -6,6 +6,6 @@ export async function POST(req: Request) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
-  const cases = await seedDemoCases(Boolean(body.force));
-  return NextResponse.json({ ok: true, count: cases.length, cases });
+  const cases = await seedDemoCases(user.clinicId, Boolean(body.force));
+  return NextResponse.json({ ok: true, count: cases.length, cases, clinicId: user.clinicId });
 }
