@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
-    "db:seed": "tsx scripts/seed.ts",
+    "db:seed": "tsx scripts/db-seed.ts",
     "golden": "tsx scripts/run-golden-set.ts",
     "golden:build-cases": "tsx scripts/build-golden-cases.ts",
     "ci": "python3 scripts/ci.py",
@@ -18,7 +18,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:release": "bash scripts/db-release.sh",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "start:render": "bash scripts/start-with-db.sh"
   },
   "prisma": {
     "seed": "tsx scripts/seed.ts"

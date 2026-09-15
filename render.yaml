@@ -1,18 +1,21 @@
-# AppealClinic — Render Blueprint (Free Web Service)
+# AppealClinic — Render Blueprint
 # Canonical deploy steps: docs/deploy-cheap.md
 #
 # Persistence:
-#   - DATABASE_URL unset → JSON store (ephemeral on Free)
-#   - DATABASE_URL set   → Prisma Postgres (production path)
+#   - DATABASE_URL unset → JSON store (ephemeral on Free) — local/demo only
+#   - DATABASE_URL set   → Prisma Postgres (production multi-user path)
 # Stripe: leave unset (last). No PHI.
+#
+# Start always runs scripts/start-with-db.sh:
+#   DATABASE_URL set → prisma db push (no --force-reset) then next start
+#   unset            → next start only
 services:
   - type: web
     name: appealclinic
     runtime: node
     plan: free
-    # prisma generate always; db-release runs migrate deploy only when DATABASE_URL is set
-    buildCommand: bun install --frozen-lockfile && bunx prisma generate && bash scripts/db-release.sh && bun run build
-    startCommand: bun run start
+    buildCommand: bun install --frozen-lockfile && bunx prisma generate && bun run build
+    startCommand: bun run start:render
     healthCheckPath: /
     envVars:
       - key: APP_MODE
@@ -23,5 +26,19 @@ services:
         generateValue: true
       - key: NEXT_PUBLIC_APP_URL
         sync: false
-      # Set DATABASE_URL in the Render dashboard after creating Neon/Render Postgres.
+      # Prefer Render-managed Postgres (same region → internal URL).
+      # CoS may also attach DATABASE_URL via Render REST (Neon etc.).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: appealclinic-db
+          property: connectionString
       # Leave STRIPE_* unset (Stripe last)
+
+# Render Postgres — free plan if available; else cheapest basic.
+# If free Postgres is unavailable in the workspace, omit this section and
+# set DATABASE_URL manually to a Neon (or other) external URL.
+databases:
+  - name: appealclinic-db
+    plan: free
+    # If `free` is rejected by the Blueprint, switch to:
+    # plan: basic-256mb
