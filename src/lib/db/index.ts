@@ -6,12 +6,16 @@
  * - DATABASE_URL set → Prisma Postgres: **required** production path for
  *   multi-user / durable hosted demos (Neon free or Render Postgres).
  *
- * Do not run multi-user production without DATABASE_URL.
+ * Phase 2: all case/settings ops are clinic-scoped (clinicId required).
  */
-import type { AppealCase, ClinicSettings, DemoUser, Store } from "@/lib/types";
+import type { AppealCase, ClinicSettings, DemoUser, MembershipRole, Store } from "@/lib/types";
+import { DEMO_CLINIC_ID } from "@/lib/tenancy";
 import * as json from "./json-store";
 
 export { DEMO_CASES, DEFAULT_SETTINGS, DEMO_USER } from "./seed";
+export { DEMO_CLINIC_ID, DEMO_CLINIC_NAME } from "@/lib/tenancy";
+export { writeAudit } from "./audit";
+export type { AuditAction, AuditWriteInput } from "./audit";
 
 export function usingPostgres(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
@@ -24,15 +28,26 @@ async function pg() {
 export async function getStore(): Promise<Store> {
   if (usingPostgres()) {
     const p = await pg();
+    await p.ensureTenancy();
     const [settings, cases, users] = await Promise.all([
-      p.prismaGetSettings(),
-      p.prismaListCases(),
-      p.prismaListUsers(),
+      p.prismaGetSettings(DEMO_CLINIC_ID),
+      p.prismaListCases(DEMO_CLINIC_ID),
+      p.prismaListUsersForClinic(DEMO_CLINIC_ID),
     ]);
     return {
       users,
-      settings,
+      clinics: [
+        {
+          id: DEMO_CLINIC_ID,
+          name: "Demo Clinic",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      memberships: [],
+      settingsByClinic: { [DEMO_CLINIC_ID]: settings },
       cases,
+      auditEvents: [],
       seeded: true,
     };
   }
@@ -53,58 +68,74 @@ export async function saveStore(store: Store): Promise<void> {
   json.jsonSaveStore(store);
 }
 
-export async function getSettings(): Promise<ClinicSettings> {
-  if (usingPostgres()) return (await pg()).prismaGetSettings();
-  return json.jsonGetSettings();
+export async function getMembershipForUser(
+  userId: string
+): Promise<{ clinicId: string; role: MembershipRole; clinicName: string } | null> {
+  if (usingPostgres()) return (await pg()).prismaGetMembershipForUser(userId);
+  return json.jsonGetMembershipForUser(userId);
+}
+
+export async function getSettings(clinicId: string): Promise<ClinicSettings> {
+  if (usingPostgres()) return (await pg()).prismaGetSettings(clinicId);
+  return json.jsonGetSettings(clinicId);
 }
 
 export async function updateSettings(
+  clinicId: string,
   patch: Partial<ClinicSettings>
 ): Promise<ClinicSettings> {
-  if (usingPostgres()) return (await pg()).prismaUpdateSettings(patch);
-  return json.jsonUpdateSettings(patch);
+  if (usingPostgres()) return (await pg()).prismaUpdateSettings(clinicId, patch);
+  return json.jsonUpdateSettings(clinicId, patch);
 }
 
-export async function listCases(): Promise<AppealCase[]> {
-  if (usingPostgres()) return (await pg()).prismaListCases();
-  return json.jsonListCases();
+export async function listCases(clinicId: string): Promise<AppealCase[]> {
+  if (usingPostgres()) return (await pg()).prismaListCases(clinicId);
+  return json.jsonListCases(clinicId);
 }
 
-export async function getCase(id: string): Promise<AppealCase | undefined> {
-  if (usingPostgres()) return (await pg()).prismaGetCase(id);
-  return json.jsonGetCase(id);
+export async function getCase(
+  clinicId: string,
+  id: string
+): Promise<AppealCase | undefined> {
+  if (usingPostgres()) return (await pg()).prismaGetCase(clinicId, id);
+  return json.jsonGetCase(clinicId, id);
 }
 
 export async function createCase(
-  data: Omit<AppealCase, "id" | "created_at" | "updated_at" | "outcome"> & {
+  clinicId: string,
+  data: Omit<AppealCase, "id" | "created_at" | "updated_at" | "outcome" | "clinicId"> & {
     outcome?: AppealCase["outcome"];
   }
 ): Promise<AppealCase> {
-  if (usingPostgres()) return (await pg()).prismaCreateCase(data);
-  return json.jsonCreateCase(data);
+  if (usingPostgres()) return (await pg()).prismaCreateCase(clinicId, data);
+  return json.jsonCreateCase(clinicId, data);
 }
 
 export async function updateCase(
+  clinicId: string,
   id: string,
   patch: Partial<AppealCase>
 ): Promise<AppealCase | null> {
-  if (usingPostgres()) return (await pg()).prismaUpdateCase(id, patch);
-  return json.jsonUpdateCase(id, patch);
+  if (usingPostgres()) return (await pg()).prismaUpdateCase(clinicId, id, patch);
+  return json.jsonUpdateCase(clinicId, id, patch);
 }
 
-export async function deleteCase(id: string): Promise<boolean> {
-  if (usingPostgres()) return (await pg()).prismaDeleteCase(id);
-  return json.jsonDeleteCase(id);
+export async function deleteCase(clinicId: string, id: string): Promise<boolean> {
+  if (usingPostgres()) return (await pg()).prismaDeleteCase(clinicId, id);
+  return json.jsonDeleteCase(clinicId, id);
 }
 
-export async function seedDemoCases(force = false): Promise<AppealCase[]> {
-  if (usingPostgres()) return (await pg()).prismaSeedDemoCases(force);
-  return json.jsonSeedDemoCases(force);
+export async function seedDemoCases(
+  clinicId: string = DEMO_CLINIC_ID,
+  force = false
+): Promise<AppealCase[]> {
+  if (usingPostgres()) return (await pg()).prismaSeedDemoCases(clinicId, force);
+  return json.jsonSeedDemoCases(clinicId, force);
 }
 
-export async function statusCounts() {
-  if (usingPostgres()) return (await pg()).prismaStatusCounts();
-  return json.jsonStatusCounts();
+export async function statusCounts(clinicId: string) {
+  if (usingPostgres()) return (await pg()).prismaStatusCounts(clinicId);
+  return json.jsonStatusCounts(clinicId);
 }
 
 export async function findUserByEmail(email: string): Promise<DemoUser | undefined> {
@@ -123,14 +154,36 @@ export async function migrateUserPasswordHash(
   json.jsonMigrateUserPasswordHash(id, passwordHash);
 }
 
-export async function listUsers(): Promise<DemoUser[]> {
+export async function listUsers(clinicId?: string): Promise<DemoUser[]> {
+  if (clinicId) {
+    if (usingPostgres()) return (await pg()).prismaListUsersForClinic(clinicId);
+    return json.jsonListUsersForClinic(clinicId);
+  }
   if (usingPostgres()) return (await pg()).prismaListUsers();
   return json.jsonListUsers();
 }
 
-export async function createUser(user: DemoUser): Promise<DemoUser> {
-  if (usingPostgres()) return (await pg()).prismaCreateUser(user);
-  return json.jsonCreateUser(user);
+export async function createUser(
+  user: DemoUser,
+  clinicId: string = DEMO_CLINIC_ID,
+  role: MembershipRole = "coordinator"
+): Promise<DemoUser> {
+  if (usingPostgres()) {
+    return (await pg()).prismaCreateUserInClinic(clinicId, user, role);
+  }
+  return json.jsonCreateUserInClinic(clinicId, user, role);
+}
+
+export async function deleteClinicData(
+  clinicId: string
+): Promise<{ deletedCases: number }> {
+  if (usingPostgres()) return (await pg()).prismaDeleteClinicData(clinicId);
+  return json.jsonDeleteClinicData(clinicId);
+}
+
+export async function listAuditEvents(clinicId: string, limit = 100) {
+  if (usingPostgres()) return (await pg()).prismaListAuditEvents(clinicId, limit);
+  return json.jsonListAuditEvents(clinicId, limit);
 }
 
 export type SubscriptionEntitlement = {
