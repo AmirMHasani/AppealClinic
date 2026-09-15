@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppNav } from "@/components/AppNav";
 import type { ClinicSettings } from "@/lib/types";
+import { SettingsTenancyBanner } from "@/components/SettingsTenancyBanner";
+import { SettingsRetentionPanel } from "@/components/SettingsRetentionPanel";
 
 type StaffUser = { id: string; email: string; name: string };
 
@@ -158,16 +160,7 @@ export default function SettingsPage() {
           Letterhead used on generated appeal letters.
         </p>
 
-        <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-950">
-          <p className="font-semibold tracking-tight">
-            Single demo clinic · APP_MODE=demo
-          </p>
-          <p className="mt-1 text-amber-900/90">
-            Staff users share this one clinic. There is{" "}
-            <strong>no clinicId tenancy yet</strong> (Phase 2). Do not treat this
-            as multi-tenant production.
-          </p>
-        </div>
+        <SettingsTenancyBanner />
 
         <div className="mt-4 rounded border border-brand-200 bg-brand-50 px-3 py-2.5 text-[12.5px] text-brand-900">
           <p className="font-semibold tracking-tight">Security &amp; data posture</p>
@@ -258,8 +251,8 @@ export default function SettingsPage() {
               Staff users
             </h2>
             <p className="mt-1 text-[12.5px] text-ink-muted">
-              Add email + password accounts for the shared demo clinic. Demo login
-              still works; new staff can sign in with their own credentials.
+              Add email + password accounts for your clinic. New staff join as
+              coordinators of the same clinic (no cross-clinic access).
             </p>
           </div>
 
@@ -300,6 +293,7 @@ export default function SettingsPage() {
                 type="email"
                 value={teamEmail}
                 required
+                minLength={8}
                 onChange={(e) => setTeamEmail(e.target.value)}
                 autoComplete="off"
               />
@@ -337,6 +331,8 @@ export default function SettingsPage() {
             </div>
           </form>
         </section>
+
+        <SettingsRetentionPanel />
       </main>
     </div>
   );
