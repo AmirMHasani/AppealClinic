@@ -1,9 +1,10 @@
 # Stripe go-live checklist — $249/mo Checkout
 
-**Priority:** Stripe is **last**. Get a public demo URL first (`docs/deploy-cheap.md`). Keep Checkout stubbed or test-only; do **not** push live payments for the bootstrap demo.
+**Priority:** Stripe is **last**. Get a public demo URL first (`docs/deploy-cheap.md`). Use **TEST mode only** for Phase 1.  
+**Never enable live:** keep `STRIPE_LIVE_ENABLED=false` (or unset). Live keys / livemode webhook events are rejected.
 
 **Product:** AppealClinic Clinic plan — **$249/month** per location (unlimited drafts).  
-**Code today:** `POST /api/stripe/checkout` + `/api/stripe/status` are wired for **test mode**. Soft success/cancel pages exist. Webhook handler is still TODO for entitlements. Do **not** process live charges until Phase 2 exit + security review.
+**Code today:** `POST /api/stripe/checkout`, `GET /api/stripe/status`, and `POST /api/stripe/webhook` (signature verify + AppMeta entitlement). Soft success/cancel pages exist. Do **not** process live charges until Phase 2 exit + security review.
 
 ---
 
@@ -11,11 +12,52 @@
 
 | Gate | Rule |
 | --- | --- |
-| Phase 2 exit | Shadow validation complete per `docs/phase-2-shadow-validation.md` (usable drafts, citation discipline, sample size) |
+| Phase 2 exit | Shadow validation complete per `docs/phase-2-shadow-validation.md` |
 | Security review | Customer-facing story matches `docs/security-one-pager.md`; BAAs in motion if PHI is in scope |
-| Live charges | **Still no live Stripe charges** until this gate is explicitly cleared — even if keys exist in an env |
+| Live charges | **Still no live Stripe charges** until this gate is explicitly cleared |
 
-Until the gate clears: use **test mode** only, or leave keys unset so `/upgrade` shows “Available after security review.”
+Until the gate clears: use **test mode** only, or leave keys unset so `/upgrade` shows “not configured.”
+
+---
+
+## Exact Render env vars (TEST only) — paste list for Amir
+
+Set these on **https://dashboard.render.com** → Web Service `appealclinic` → Environment.  
+**Do not commit real keys.** Leave unset until you are ready to test Checkout.
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_LIVE_ENABLED=false
+NEXT_PUBLIC_APP_URL=https://appealclinic.onrender.com
+```
+
+| Variable | Exact form | Notes |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | `sk_test_...` | Stripe Dashboard → Developers → API keys (Test mode) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_...` | Same page, publishable key |
+| `STRIPE_PRICE_ID` | `price_...` | Recurring $249/mo Price ID |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | From the webhook endpoint signing secret |
+| `STRIPE_LIVE_ENABLED` | `false` | **Omit or false** — never `true` for Phase 1 |
+| `NEXT_PUBLIC_APP_URL` | `https://appealclinic.onrender.com` | Checkout success/cancel return base |
+
+### Webhook URL (exact)
+
+```
+https://appealclinic.onrender.com/api/stripe/webhook
+```
+
+Stripe Dashboard → Developers → Webhooks → Add endpoint → select events:
+
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+Optional later: `invoice.paid`, `invoice.payment_failed`.
+
+Handler verifies signature with raw body, rejects `livemode` events unless `STRIPE_LIVE_ENABLED=true`, and stores a minimal entitlement flag on `AppMeta` (`planEntitled`, `subscriptionStatus`, customer/subscription ids).
 
 ---
 
@@ -29,99 +71,47 @@ Until the gate clears: use **test mode** only, or leave keys unset so `/upgrade`
 
 ---
 
-## 2. Webhook
+## 2. What the app does today
 
-1. Developers → Webhooks → Add endpoint.  
-2. URL (production target): `https://<your-domain>/api/stripe/webhook`  
-3. Events to start with:
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.paid` / `invoice.payment_failed` (recommended)
-4. Copy **Webhook signing secret** → `STRIPE_WEBHOOK_SECRET`.  
-5. Implement signature verification with the raw body (Next.js App Router: use the request text, not parsed JSON twice).
-
-*Not implemented in the MVP repo yet — add when enabling Checkout.*
-
----
-
-## 3. Environment variables
-
-See `.env.example`. Set in Vercel/host secrets (never commit real keys):
-
-| Variable | Purpose |
+| Route | Behavior |
 | --- | --- |
-| `AUTH_SECRET` | Strong random secret for session cookies (required in any shared deploy) |
-| `STRIPE_SECRET_KEY` | `sk_test_...` then later `sk_live_...` |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_...` / `pk_live_...` |
-| `STRIPE_PRICE_ID` | `price_...` for the $249/mo price |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_...` |
-
-**Do not implement live charges without keys** — and do not put live keys in the repo.
+| `POST /api/stripe/checkout` | Auth required; creates subscription Checkout Session when **test** keys present (or live only if flag on) |
+| `GET /api/stripe/status` | Keys present, mode, checkout allowed, `planEntitled` |
+| `POST /api/stripe/webhook` | Signature verify; entitlement on AppMeta; live events blocked by default |
+| `/upgrade` | Gates on keys; test Checkout button when allowed |
 
 ---
 
-## 4. What to change in the app (read `/upgrade` first)
-
-### Current behavior (`src/app/upgrade/page.tsx`)
-
-- Client page; requires login via `/api/auth/me`.  
-- Shows $249/mo copy.  
-- If keys missing → configure prompt. If test keys present → Checkout enabled. Live keys need `STRIPE_LIVE_ENABLED=true`.  
-- Test Checkout redirects to Stripe; do not take real money until MVP checklist + live flag.  
-- Footer: no charges until Phase 2 / security review.
-
-### When implementing Checkout (future PR)
-
-1. **API route** e.g. `POST /api/stripe/checkout`  
-   - Auth required.  
-   - Create Stripe Checkout Session in `subscription` mode with `STRIPE_PRICE_ID`.  
-   - `success_url` / `cancel_url` back to app.  
-   - Return `{ url }` and redirect client.
-2. **Webhook route** e.g. `POST /api/stripe/webhook`  
-   - Verify signature.  
-   - Mark clinic/location as `plan: paid` (requires DB beyond JSON demo when multi-tenant).  
-3. **`/upgrade` page**  
-   - Call checkout API on button click.  
-   - Disable button while redirecting.  
-   - Keep clear copy if soft-launch gate is closed (feature flag recommended: `STRIPE_LIVE_ENABLED=false`).
-4. **`/pricing`**  
-   - Point CTA at `/upgrade`; avoid “broken stub” language once gated copy is in place.
-5. **Entitlements**  
-   - Enforce free-draft limit vs paid in API when you leave pure demo mode.
-
----
-
-## 5. Test mode vs live
+## 3. Test mode vs live
 
 | Mode | Keys | Use |
 | --- | --- | --- |
-| **Test** | `sk_test_` / `pk_test_` | Card `4242…`; verify session + webhook locally (`stripe listen`) |
-| **Live** | `sk_live_` / `pk_live_` | Only after soft-launch gate; real $249 charges |
+| **Test** | `sk_test_` / `pk_test_` | Card `4242…`; verify session + webhook |
+| **Live** | `sk_live_` / `pk_live_` | Only after soft-launch gate; requires `STRIPE_LIVE_ENABLED=true` |
 
 Checklist before flipping live keys:
 
 - [ ] Test Checkout end-to-end  
-- [ ] Webhook updates subscription state correctly  
+- [ ] Webhook updates `planEntitled` correctly  
 - [ ] Cancel / failed payment paths understood  
 - [ ] Phase 2 exit signed off  
 - [ ] Security one-pager reviewed with first pilot  
-- [ ] `STRIPE_LIVE_ENABLED` (or equivalent) explicitly true  
+- [ ] `STRIPE_LIVE_ENABLED` explicitly true  
 
 ---
 
-## 6. Soft launch messaging
+## 4. Soft launch messaging
 
 Until the gate clears, UI should say roughly:
 
-> **Available after security review** — Checkout will be enabled when Phase 2 validation and security review are complete. No live charges in this build.
+> Checkout not configured — set test keys in the host env, or keep gated until security review.
 
 Do not imply the product is broken; imply it is **intentionally gated**.
 
 ---
 
-## 7. Rollback
+## 5. Rollback
 
-- Remove or rotate live keys.  
-- Set publishable key unset or `STRIPE_LIVE_ENABLED=false` so `/upgrade` returns to gated stub.  
+- Remove or rotate keys.  
+- Set `STRIPE_LIVE_ENABLED=false` so live is blocked.  
 - Pause the Price in Stripe Dashboard if needed.
