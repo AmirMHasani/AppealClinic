@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppNav } from "@/components/AppNav";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PilotChecklist } from "@/components/PilotChecklist";
 import type { AppealCase, CaseStatus, Indication, PayerId } from "@/lib/types";
 import { DENIAL_TYPES, INDICATIONS, PAYERS } from "@/lib/config";
 
@@ -149,6 +150,8 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        <PilotChecklist cases={cases} hasSession={Boolean(userName)} />
 
         <div className="mt-4 grid grid-cols-3 gap-2 lg:grid-cols-7">
           <button
