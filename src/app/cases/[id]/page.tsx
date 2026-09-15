@@ -18,6 +18,19 @@ const STATUSES: CaseStatus[] = [
   "abandoned",
 ];
 
+function fmtDate(iso?: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -49,6 +62,11 @@ export default function CaseDetailPage() {
     load();
   }, [id]);
 
+  function flash(text: string) {
+    setMsg(text);
+    setTimeout(() => setMsg(""), 3000);
+  }
+
   async function regenerate() {
     setSaving(true);
     const res = await fetch(`/api/cases/${id}/generate`, { method: "POST" });
@@ -56,7 +74,7 @@ export default function CaseDetailPage() {
     setC(data.case);
     setLetter(data.case.letter_markdown || "");
     setSaving(false);
-    setMsg("Letter regenerated");
+    flash("Letter regenerated");
   }
 
   async function saveLetter() {
@@ -69,10 +87,13 @@ export default function CaseDetailPage() {
     const data = await res.json();
     setC(data.case);
     setSaving(false);
-    setMsg("Letter saved");
+    flash("Letter saved");
   }
 
-  async function saveOutcome(patch: Partial<AppealCase["outcome"]>) {
+  async function saveOutcome(
+    patch: Partial<AppealCase["outcome"]>,
+    successMsg = "Outcome saved"
+  ) {
     if (!c) return;
     const res = await fetch(`/api/cases/${id}`, {
       method: "PUT",
@@ -81,12 +102,12 @@ export default function CaseDetailPage() {
     });
     const data = await res.json();
     setC(data.case);
-    setMsg("Outcome updated");
+    flash(successMsg);
   }
 
   function copyLetter() {
     navigator.clipboard.writeText(letter);
-    setMsg("Copied to clipboard");
+    flash("Copied to clipboard");
   }
 
   if (!c) {
@@ -97,6 +118,8 @@ export default function CaseDetailPage() {
       </div>
     );
   }
+
+  const nowIso = () => new Date().toISOString();
 
   return (
     <div className="page-shell pb-8">
@@ -198,8 +221,89 @@ export default function CaseDetailPage() {
               </ul>
             </div>
 
-            <div className="card-pad space-y-4">
+            <div className="card-pad space-y-3">
               <h2 className="section-title">Status / outcome</h2>
+
+              <div className="flex flex-wrap items-center gap-2 rounded border border-paper-rule bg-paper px-2.5 py-2">
+                <StatusBadge status={c.outcome.status} />
+                <span className="text-[11px] text-ink-faint">
+                  Submitted {fmtDate(c.outcome.submitted_at)}
+                </span>
+                <span className="text-[11px] text-ink-faint">·</span>
+                <span className="text-[11px] text-ink-faint">
+                  Decision {fmtDate(c.outcome.decision_at)}
+                </span>
+                {c.outcome.dollars_recovered != null && (
+                    <>
+                      <span className="text-[11px] text-ink-faint">·</span>
+                      <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                        ${Number(c.outcome.dollars_recovered).toLocaleString()}
+                      </span>
+                    </>
+                  )}
+              </div>
+
+              <div>
+                <p className="ops-kicker mb-1.5">Quick log</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() => saveOutcome({ status: "ready" })}
+                  >
+                    Mark ready
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() =>
+                      saveOutcome({
+                        status: "submitted",
+                        submitted_at: nowIso(),
+                      })
+                    }
+                  >
+                    Mark submitted
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() =>
+                      saveOutcome({
+                        status: "won",
+                        decision_at: nowIso(),
+                      })
+                    }
+                  >
+                    Mark won
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() =>
+                      saveOutcome({
+                        status: "partial",
+                        decision_at: nowIso(),
+                      })
+                    }
+                  >
+                    Mark partial
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() =>
+                      saveOutcome({
+                        status: "lost",
+                        decision_at: nowIso(),
+                      })
+                    }
+                  >
+                    Mark lost
+                  </button>
+                </div>
+              </div>
+
               <label className="block">
                 <span className="label">Status</span>
                 <select
