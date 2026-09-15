@@ -5,7 +5,7 @@
 **Live service (current):** `srv-dafi4c5g1s2s73elki0g` → **https://appealclinic.onrender.com**  
 **Postgres:** Render Free Postgres **already attached** via `DATABASE_URL` (same Blueprint / region). Instance id **`dpg-dakns77qj5pc73d7koj0-a`**. Free DB expires ~**2026-10-15** (30-day free from ~Sep 15 create) — **before expiry**, migrate to **Neon free** (paste pooled URL as `DATABASE_URL`) or **paid Render Postgres**. Do not wait until expiry day.  
 **Do not** treat Vercel as the default. Vercel remains optional only — see `docs/deploy-vercel.md`.  
-**Stripe:** leave **unset**. Stripe is **last** — omit all `STRIPE_*` vars for bootstrap demos.  
+**Stripe:** **last**. Omit all `STRIPE_*` for bootstrap demos. When ready, use **TEST** keys only (`STRIPE_LIVE_ENABLED=false`) — see paste list near the bottom and `docs/stripe-go-live.md`.  
 **PHI:** synthetic / demo data only. Do not invent or load real PHI.
 
 ---
@@ -77,7 +77,8 @@ Which runs `scripts/start-with-db.sh`:
 | `NEXT_PUBLIC_APP_URL` | **Yes** | Render HTTPS URL, e.g. `https://appealclinic.onrender.com`. |
 | `DATABASE_URL` | **Required for multi-user** | Neon free **or** Render Postgres. Prefer **internal** connection string when DB is on Render in the **same region**. **Already set** on the live service. |
 | `OPENAI_API_KEY` | Optional | Off is fine; rules engine is enough for demos. |
-| `STRIPE_*` / `STRIPE_LIVE_ENABLED` | **Omit** | Stripe last — leave unset for bootstrap demos. |
+| `STRIPE_*` (test only) | Optional | When ready for test Checkout — see paste list below. **Never** set live keys / `STRIPE_LIVE_ENABLED=true` in Phase 1. |
+| `STRIPE_LIVE_ENABLED` | **Omit or `false`** | Must stay false/unset. |
 
 ---
 
@@ -198,13 +199,28 @@ Short one-pager: **`docs/keepalive.md`**.
 - [ ] Login → case list → new appeal wizard → generate letter
 - [ ] Edit letter → DOCX download and/or print works on **synthetic** cases
 - [ ] Env banner shows demo / non-PHI posture (`APP_MODE=demo`)
-- [ ] No Stripe keys set; `/upgrade` stays gated or stub messaging
+- [ ] Stripe: leave unset for bootstrap OR use **test** keys only (`STRIPE_LIVE_ENABLED=false`); webhook `https://appealclinic.onrender.com/api/stripe/webhook`
 - [ ] You can paste the URL into `docs/pilot-one-pager.md` for outreach
 - [x] **With `DATABASE_URL`:** Postgres attached; cases persist across sleep/redeploy
 - [ ] Login `demo@appealclinic.local` / `demo1234` works after first Postgres deploy
 - [ ] Optional: `/api/health` returns `{ ok: true, db: true }` for keep-alive probes
 
-**Then (last):** Stripe **test** Checkout — see `docs/stripe-go-live.md`.  
+**Then (last):** Stripe **test** Checkout — see `docs/stripe-go-live.md`.
+
+### Stripe TEST env paste list (Render)
+
+When enabling test Checkout (optional — omit entirely for bootstrap demos):
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_LIVE_ENABLED=false
+```
+
+Webhook URL: `https://appealclinic.onrender.com/api/stripe/webhook`  
+Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.  
 **Never:** live Stripe or real PHI until BAAs (`docs/baa-and-hosting-options.md`).
 
 ---
