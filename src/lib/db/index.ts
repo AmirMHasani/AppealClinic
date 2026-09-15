@@ -1,7 +1,7 @@
 /**
  * Persistence facade.
- * - No DATABASE_URL → local JSON (data/store.json) — local demo + Render Free default.
- * - DATABASE_URL set → Prisma Postgres (Neon free or Render Postgres).
+ * - DATABASE_URL set → Prisma Postgres (production / durable Render path).
+ * - DATABASE_URL unset → local JSON (data/store.json) — laptop/CI only.
  */
 import type { AppealCase, ClinicSettings, DemoUser, Store } from "@/lib/types";
 import * as json from "./json-store";
