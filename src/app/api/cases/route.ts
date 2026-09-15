@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { createCase, listCases, seedDemoCases, statusCounts } from "@/lib/db";
+import { createCase, listCases, seedDemoCases, statusCounts, writeAudit } from "@/lib/db";
 import {
   decideRedaction,
   redactionBlockedResponse,
@@ -10,10 +10,11 @@ import type { AppealCase } from "@/lib/types";
 export async function GET() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await seedDemoCases(false);
+  await seedDemoCases(user.clinicId, false);
   return NextResponse.json({
-    cases: await listCases(),
-    stats: await statusCounts(),
+    cases: await listCases(user.clinicId),
+    stats: await statusCounts(user.clinicId),
+    clinicId: user.clinicId,
   });
 }
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     return redactionBlockedResponse(decision.hits);
   }
 
-  const c = await createCase({
+  const c = await createCase(user.clinicId, {
     meta: body.meta,
     denial: body.denial,
     clinical: body.clinical,
@@ -40,7 +41,16 @@ export async function POST(req: Request) {
     checklist: body.checklist,
     gaps: body.gaps,
     outcome: body.outcome,
-  } as Omit<AppealCase, "id" | "created_at" | "updated_at">);
+  } as Omit<AppealCase, "id" | "created_at" | "updated_at" | "clinicId">);
+
+  await writeAudit({
+    clinicId: user.clinicId,
+    userId: user.id,
+    action: "case.create",
+    entityType: "case",
+    entityId: c.id,
+    meta: { internal_case_id: c.meta?.internal_case_id },
+  });
 
   return NextResponse.json({
     case: c,

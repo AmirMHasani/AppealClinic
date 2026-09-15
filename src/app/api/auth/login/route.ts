@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { createSession, verifyCredentials } from "@/lib/auth/session";
-import { getCase, getSettings, seedDemoCases, updateCase } from "@/lib/db";
+import { getCase, getSettings, seedDemoCases, updateCase, writeAudit } from "@/lib/db";
 import { generateAppeal } from "@/lib/generator/generateAppeal";
 
-async function ensureDemoLetters() {
-  const seeded = await seedDemoCases(false);
-  const settings = await getSettings();
+async function ensureDemoLetters(clinicId: string) {
+  const seeded = await seedDemoCases(clinicId, false);
+  const settings = await getSettings(clinicId);
   for (const s of seeded) {
     try {
-      const c = await getCase(s.id);
+      const c = await getCase(clinicId, s.id);
       if (c && !c.letter_markdown) {
         const result = await generateAppeal(c, settings);
-        await updateCase(c.id, {
+        await updateCase(clinicId, c.id, {
           letter_markdown: result.letter_markdown,
           checklist: result.checklist,
           gaps: result.gaps,
@@ -19,9 +19,7 @@ async function ensureDemoLetters() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[ensureDemoLetters] Skipping case ${s.id}: ${message}`
-      );
+      console.error(`[ensureDemoLetters] Skipping case ${s.id}: ${message}`);
     }
   }
 }
@@ -36,11 +34,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
     await createSession(user);
-    await ensureDemoLetters();
-    return NextResponse.json({ ok: true, user });
+    await writeAudit({
+      clinicId: user.clinicId,
+      userId: user.id,
+      action: "login",
+      entityType: "user",
+      entityId: user.id,
+    });
+    await ensureDemoLetters(user.clinicId);
+    return NextResponse.json({
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        clinicId: user.clinicId,
+        role: user.role,
+        clinicName: user.clinicName,
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
-    const status = message.includes("AUTH_SECRET") ? 500 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
