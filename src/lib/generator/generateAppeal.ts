@@ -3,11 +3,50 @@ import type {
   ClinicSettings,
   CitationSlot,
 } from "@/lib/types";
-import { INDICATIONS, PAYERS, DENIAL_TYPES } from "@/lib/config";
+import { INDICATIONS, PAYERS, DENIAL_TYPES, type PayerPack } from "@/lib/config";
 import { buildChecklistAndGaps } from "./checklist";
 
 const FOOTER =
   "Draft for clinical/billing review. Confirm payer criteria and deadlines before submission.";
+
+const UNKNOWN_PAYER: PayerPack = {
+  id: "uhc",
+  name: "Unknown payer",
+  aliases: [],
+  appealWindowDaysDefault: 180,
+  addressBlock: "[Payer address — confirm with denial letter before submission]",
+  commonDenialPhrases: [],
+  citationSlots: [],
+  toneNotes: "",
+};
+
+const UNKNOWN_INDICATION = {
+  id: "plaque_psoriasis" as const,
+  label: "the indicated condition",
+  short: "unknown",
+  severityFields: [] as ("bsaPercent" | "iga" | "pga" | "dlqi" | "hurleyStage")[],
+};
+
+const UNKNOWN_DENIAL_TYPE = {
+  id: "medical_necessity" as const,
+  label: "coverage",
+  description: "",
+};
+
+function resolvePayer(c: AppealCase): PayerPack {
+  return (c.denial?.payer_id && PAYERS[c.denial.payer_id]) || UNKNOWN_PAYER;
+}
+
+function resolveIndication(c: AppealCase) {
+  return (c.meta?.indication && INDICATIONS[c.meta.indication]) || UNKNOWN_INDICATION;
+}
+
+function resolveDenialType(c: AppealCase) {
+  return (
+    (c.denial?.denial_type && DENIAL_TYPES[c.denial.denial_type]) ||
+    UNKNOWN_DENIAL_TYPE
+  );
+}
 
 function fmtDate(iso?: string) {
   if (!iso) return "[date]";
@@ -56,7 +95,7 @@ function priorTherapyTable(c: AppealCase): string {
 }
 
 function rationaleForDenial(c: AppealCase): string {
-  const type = DENIAL_TYPES[c.denial.denial_type];
+  const type = resolveDenialType(c);
   const drug = c.meta.requested_drug;
   switch (c.denial.denial_type) {
     case "step_therapy":
@@ -106,13 +145,14 @@ function rationaleForDenial(c: AppealCase): string {
  * Never invent policy numbers, URLs, or statute cites.
  */
 function citationBlock(c: AppealCase): string {
-  const payer = PAYERS[c.denial.payer_id];
+  const payer = resolvePayer(c);
+  const indication = resolveIndication(c);
   const lines: string[] = [];
 
   const slots: CitationSlot[] = payer.citationSlots || [];
   if (slots.length === 0) {
     lines.push(
-      `Citation needed: ${payer.name} medical/pharmacy policy for ${c.meta.requested_drug} / ${INDICATIONS[c.meta.indication].label}`
+      `Citation needed: ${payer.name} medical/pharmacy policy for ${c.meta.requested_drug} / ${indication.label}`
     );
   } else {
     for (const slot of slots) {
@@ -128,7 +168,7 @@ function citationBlock(c: AppealCase): string {
         );
       } else {
         lines.push(
-          `Citation needed: ${payer.name} policy for ${c.meta.requested_drug} (${INDICATIONS[c.meta.indication].label}) — fill slot "${slot.id}" with current title/URL before submission.`
+          `Citation needed: ${payer.name} policy for ${c.meta.requested_drug} (${indication.label}) — fill slot "${slot.id}" with current title/URL before submission.`
         );
       }
     }
@@ -152,9 +192,10 @@ function citationBlock(c: AppealCase): string {
 function specificAsk(c: AppealCase): string {
   const drug = c.meta.requested_drug;
   const dose = c.meta.requested_dose ? ` at ${c.meta.requested_dose}` : "";
+  const indication = resolveIndication(c);
   switch (c.denial.denial_type) {
     case "step_therapy":
-      return `We respectfully request that you overturn this denial and authorize ${drug}${dose} for the treatment of ${INDICATIONS[c.meta.indication].label}, accepting documented prior therapy failures in satisfaction of step therapy requirements.`;
+      return `We respectfully request that you overturn this denial and authorize ${drug}${dose} for the treatment of ${indication.label}, accepting documented prior therapy failures in satisfaction of step therapy requirements.`;
     case "medical_necessity":
       return `We respectfully request that you reverse the medical-necessity denial and approve coverage for ${drug}${dose}.`;
     case "non_formulary":
@@ -186,8 +227,9 @@ export async function generateAppeal(
   c: AppealCase,
   settings: ClinicSettings
 ): Promise<{ letter_markdown: string; checklist: string[]; gaps: string[] }> {
-  const payer = PAYERS[c.denial.payer_id];
-  const indication = INDICATIONS[c.meta.indication];
+  const payer = resolvePayer(c);
+  const indication = resolveIndication(c);
+  const denialType = resolveDenialType(c);
   const { checklist, gaps } = buildChecklistAndGaps(c);
 
   const reParts = [
@@ -220,7 +262,7 @@ Dear Appeals Reviewer:
 
 ## Request for reconsideration
 
-On behalf of our patient, we request reconsideration and overturn of the ${DENIAL_TYPES[c.denial.denial_type].label.toLowerCase()} denial issued by ${payer.name} on ${fmtDate(c.denial.denial_date)} regarding ${c.meta.requested_drug} for ${indication.label}.
+On behalf of our patient, we request reconsideration and overturn of the ${denialType.label.toLowerCase()} denial issued by ${payer.name} on ${fmtDate(c.denial.denial_date)} regarding ${c.meta.requested_drug} for ${indication.label}.
 
 **Denial language (as provided):**  
 > ${c.denial.denial_verbatim.replace(/\n/g, "\n> ")}
@@ -230,7 +272,6 @@ ${c.denial.carc_codes ? `**CARC/RARC (if applicable):** ${c.denial.carc_codes}\n
       ? `**Appeal deadline on file (confirm with payer):** ${fmtDate(c.denial.appeal_deadline)}\n`
       : ""
   }
-
 ## Clinical summary
 
 - **Diagnosis (ICD-10):** ${c.clinical.diagnosis_icd10.join(", ") || "[not provided]"}
@@ -246,7 +287,6 @@ ${severityLines(c)
 ${narrative || "- [No narrative bullets provided]"}
 
 ${c.clinical.labs_imaging ? `**Relevant labs / screening:**  \n${c.clinical.labs_imaging}\n` : ""}
-
 ## Prior therapy / step history
 
 ${priorTherapyTable(c)}
