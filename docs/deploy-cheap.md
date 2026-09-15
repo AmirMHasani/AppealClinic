@@ -3,7 +3,7 @@
 **Audience:** Amir / CoS — public demo URL at **$0**, then durable Postgres for multi-user.  
 **Locked host:** **Render Free Web Service** (Hobby workspace + Free compute).  
 **Live service (current):** `srv-dafi4c5g1s2s73elki0g` → **https://appealclinic.onrender.com**  
-**Postgres:** Render Free Postgres **already attached** via `DATABASE_URL` (same Blueprint / region). Free DB expires ~**Oct 15, 2026** (30-day free from ~Sep 15 create) — plan **Neon free** or **paid Render Postgres** before expiry.  
+**Postgres:** Render Free Postgres **already attached** via `DATABASE_URL` (same Blueprint / region). Instance id **`dpg-dakns77qj5pc73d7koj0-a`**. Free DB expires ~**2026-10-15** (30-day free from ~Sep 15 create) — **before expiry**, migrate to **Neon free** (paste pooled URL as `DATABASE_URL`) or **paid Render Postgres**. Do not wait until expiry day.  
 **Do not** treat Vercel as the default. Vercel remains optional only — see `docs/deploy-vercel.md`.  
 **Stripe:** leave **unset**. Stripe is **last** — omit all `STRIPE_*` vars for bootstrap demos.  
 **PHI:** synthetic / demo data only. Do not invent or load real PHI.
@@ -85,8 +85,9 @@ Which runs `scripts/start-with-db.sh`:
 
 ### Live status
 
-- Render Free Postgres is **attached** to the web service; multi-user persistence is **LIVE**.
-- Free tier expiry ~**Oct 15, 2026** — before then: migrate to **Neon free** (paste pooled URL as `DATABASE_URL`) or upgrade to paid Render Postgres. Do not wait until expiry day.
+- Render Free Postgres is **attached** to the web service; multi-user persistence is **LIVE** (`/api/health` → `{ ok: true, db: true }`).
+- Instance: **`dpg-dakns77qj5pc73d7koj0-a`** — Free tier expiry ~**2026-10-15**.
+- **Before expiry (Amir / CoS pick):** migrate to **Neon free** (pooled URL → `DATABASE_URL`) **or** upgrade to **paid Render Postgres**. Calendar a cutover; do not wait until expiry day.
 
 ### Options
 
@@ -152,12 +153,31 @@ Without `DATABASE_URL`, leave Postgres scripts alone — JSON store is used auto
 
 ### Optional keep-alive (Free web sleep)
 
-Hit periodically (e.g. cron every 10–14 min) to reduce cold starts:
+Free web sleeps after ~15 min idle; first hit can take ~30–60s (bad for a live PM walkthrough). Prefer a **keep-alive ping every 10–14 min**:
 
-- `GET https://appealclinic.onrender.com/` — landing
-- `GET https://appealclinic.onrender.com/api/health` — lightweight JSON `{ ok: true, db: <boolean whether DATABASE_URL is set> }` (no secrets)
+| Option | How |
+| --- | --- |
+| **UptimeRobot** (free) | HTTP(s) monitor → `https://appealclinic.onrender.com/api/health` every **10–14 min** |
+| **cron** | `curl -fsS https://appealclinic.onrender.com/api/health` on the same interval |
+
+Endpoints:
+
+- `GET https://appealclinic.onrender.com/api/health` — preferred; lightweight JSON `{ ok: true, db: true|false }` (no secrets)
+- `GET https://appealclinic.onrender.com/` — landing (heavier)
 
 No paid always-on without Amir approving spend.
+
+Short one-pager: **`docs/keepalive.md`**.
+
+### Free Postgres expiry (calendar for CoS / Amir)
+
+| | |
+| --- | --- |
+| **DB** | `appealclinic-db` / instance `dpg-dakns77qj5pc73d7koj0-a` |
+| **Expires** | ~**2026-10-15** |
+| **Options** | (1) **Neon free** — pooled URL → `DATABASE_URL`, or (2) **paid Render Postgres** |
+| **Prefer** | **Internal** connection string when DB stays on Render same region |
+| **Action** | Set a calendar reminder now; cut over before expiry day |
 
 ---
 
