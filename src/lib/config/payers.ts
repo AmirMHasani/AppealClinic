@@ -194,17 +194,44 @@ export const PAYERS: Record<PayerId, PayerPack> = {
         url: "https://assets.humana.com/is/content/humana/2026%20Enhanced-2%20PDP-Prior%20Authorizationpdf",
         section: "Required Medical Information sections for Cosentyx/Dupixent/Adalimumab",
         notes:
-          "Medicare PDP PA criteria PDF — commercial may differ; access 2026-09-07",
+          "Medicare PDP PA criteria PDF (not commercial). Confirm MA vs commercial on the denial. Access 2026-09-07; re-verify before submit.",
+      },
+      {
+        id: "humana-2026-lean-enhanced1-pdp-pa",
+        title:
+          "Prior Authorization Criteria — 2026 Lean Enhanced-1 PDP (includes Cosentyx criteria text)",
+        url: "https://assets.humana.com/is/content/humana/2026%20Lean%20Enhanced-1%20PDP-Prior%20Authorizationpdf",
+        section: "Required Medical Information — Cosentyx (and related PA drugs)",
+        notes:
+          "Medicare PDP PA criteria PDF — Cosentyx criteria present; commercial LOB may differ. Access 2026-09-15.",
+      },
+      {
+        id: "humana-pharmacy-pa-hub",
+        title: "Humana provider pharmacy prior authorizations hub",
+        url: "https://provider.humana.com/pharmacy-resources/prior-authorizations",
+        section: "Pharmacy PA resources / submission",
+        notes:
+          "Public pharmacy PA hub (forms/process). Not a drug-specific commercial criteria PDF. Access 2026-09-15.",
+      },
+      {
+        id: "humana-commercial-pal-july-2024",
+        title:
+          "Humana Commercial Prior Authorization and Notification List (July 2024 FINAL)",
+        url: "https://assets.humana.com/is/content/humana/FINAL_July%202024%20Commercial%20Prior%20Authorization%20and%20Notification%20Listpdf",
+        section: "Commercial PA / notification drug list",
+        notes:
+          "Commercial PAL (list of drugs needing PA/notification) — NOT full Cosentyx/Dupixent/Skyrizi SC clinical criteria. Access 2026-09-15.",
       },
       {
         id: "humana-mcp-library",
         title: "Medical and Pharmacy Coverage Policies (Humana policy library home)",
         url: "https://mcp.humana.com/tad/TAD_New/Home.aspx",
         section: "Browse Pharmacy Coverage Policies",
-        notes: "Search by drug for member LOB; deep links unstable; access 2026-09-07",
+        notes:
+          "Search by drug for member LOB; deep links unstable. Commercial derm biologic criteria often plan-specific. Access 2026-09-07.",
       },
     ],
-    toneNotes: "Flag appeal deadline prominently; confirm MA vs commercial.",
+    toneNotes: "Flag appeal deadline prominently; confirm MA vs commercial. Public Cosentyx/Dupixent criteria are strongest on Medicare PDP PA PDFs — commercial SC criteria PDFs not found on open web (PAL list + PA hub only). See docs/payer-pack-gaps.md.",
   },
   ibx: {
     id: "ibx",
