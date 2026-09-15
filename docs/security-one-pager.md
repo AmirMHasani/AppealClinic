@@ -61,14 +61,13 @@ Every letter includes a footer: *Draft for clinical/billing review. Confirm paye
 
 ---
 
-## Retention & deletion (**proposed policy** — not fully productized)
-
-Until productized tooling ships, treat the following as **intended production policy**, not a guarantee of the MVP:
+## Retention & deletion (**Phase 2 — productized for cases**)
 
 - **Retention:** Case drafts and related inputs retained while the clinic subscription is active, plus a short grace period after cancellation (proposed: 30 days) for export.
-- **Deletion:** On written request, or after the grace period, clinic case data is deleted from application databases within a defined SLA (proposed: 30 days). Backups age out on the provider’s backup cycle.
+- **Deletion:** **Owner-only** `DELETE /api/clinic/data` wipes all appeal cases for that clinic (see `docs/retention.md`). Broader account/subprocessor wipe remains operator/manual for backups.
 - **Exports:** Clinics can export DOCX/PDF of their drafts before deletion.
-- **MVP today:** **No self-serve “delete all my data” admin UI.** Hosted data lives as **Postgres rows**; deletion is operator/manual (SQL / provider console) until Phase 2 retention work. Local JSON wipe only applies when `DATABASE_URL` is unset.
+- **Audit:** Clinic-scoped events at `GET /api/audit` (login, case ops, generate, export, settings, retention).
+- **Tenancy:** Cases and settings are scoped by `clinicId`; Demo Clinic is the default hosted bootstrap.
 
 ---
 
