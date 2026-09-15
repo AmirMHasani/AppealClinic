@@ -1,4 +1,4 @@
-/** Adapter: unprefixed names over json-store.ts */
+/** Adapter: unprefixed names over json-store.ts (clinic-scoped). */
 export {
   jsonGetStore as getStore,
   jsonSaveStore as saveStore,
