@@ -12,13 +12,13 @@
  *   email: demo@appealclinic.local
  *   password: demo1234
  */
-import { seedDemoCases, usingPostgres } from "../src/lib/db";
+import { DEMO_CLINIC_ID, seedDemoCases, usingPostgres } from "../src/lib/db";
 
 async function main() {
   const force = process.argv.includes("--force");
   const backend = usingPostgres() ? "prisma/postgres" : "json (data/store.json)";
-  console.log(`[seed] backend=${backend} force=${force}`);
-  const cases = await seedDemoCases(force);
+  console.log(`[seed] backend=${backend} force=${force} clinic=${DEMO_CLINIC_ID}`);
+  const cases = await seedDemoCases(DEMO_CLINIC_ID, force);
   console.log(`[seed] ok — ${cases.length} cases present (demo user ensured)`);
   console.log("[seed] login: demo@appealclinic.local / demo1234");
 }
