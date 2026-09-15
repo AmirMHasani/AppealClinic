@@ -23,8 +23,8 @@
 | Work | Owner |
 | --- | --- |
 | Rewrite `docs/security-one-pager.md` for live Postgres + demo banner (drop “JSON MVP” language) | Engineering |
-| Calendar note / routine: Free Postgres expires **~2026-10-15** — migrate Neon free or paid Render before then | CoS + Amir pick vendor |
-| Optional keep-alive ping every ~10–14 min (UptimeRobot / cron) so PM demos don’t hit spin-up interstitial | CoS |
+| Calendar note / routine: Free Postgres **`dpg-dakns77qj5pc73d7koj0-a`** expires **~2026-10-15** — migrate Neon free or paid Render before then (`docs/deploy-cheap.md`) | CoS + Amir pick vendor |
+| Optional keep-alive ping every ~10–14 min (UptimeRobot / cron → `/api/health`) so PM demos don’t hit spin-up interstitial | CoS |
 | IBX pack pass: document portal-only gaps honestly; add any public commercial PDFs found | Engineering / Data |
 
 **Exit:** Security one-pager accurate; DB expiry plan chosen; demo doesn’t surprise a PM on cold start (or warning is clear).
