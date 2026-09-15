@@ -293,7 +293,6 @@ export default function SettingsPage() {
                 type="email"
                 value={teamEmail}
                 required
-                minLength={8}
                 onChange={(e) => setTeamEmail(e.target.value)}
                 autoComplete="off"
               />
