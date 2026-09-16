@@ -34,7 +34,9 @@ const UNKNOWN_DENIAL_TYPE = {
 };
 
 function resolvePayer(c: AppealCase): PayerPack {
-  return (c.denial?.payer_id && PAYERS[c.denial.payer_id]) || UNKNOWN_PAYER;
+  const legacyMeta = c.meta as AppealCase["meta"] & { payer_id?: string; denial_type?: string };
+  const id = c.denial?.payer_id || legacyMeta?.payer_id;
+  return (id && PAYERS[id]) || UNKNOWN_PAYER;
 }
 
 function resolveIndication(c: AppealCase) {
@@ -42,10 +44,9 @@ function resolveIndication(c: AppealCase) {
 }
 
 function resolveDenialType(c: AppealCase) {
-  return (
-    (c.denial?.denial_type && DENIAL_TYPES[c.denial.denial_type]) ||
-    UNKNOWN_DENIAL_TYPE
-  );
+  const legacyMeta = c.meta as AppealCase["meta"] & { payer_id?: string; denial_type?: string };
+  const id = c.denial?.denial_type || legacyMeta?.denial_type;
+  return (id && DENIAL_TYPES[id]) || UNKNOWN_DENIAL_TYPE;
 }
 
 function fmtDate(iso?: string) {
@@ -60,16 +61,71 @@ function fmtDate(iso?: string) {
   }
 }
 
+/** Accept sparse or legacy demo payloads without throwing. */
+function normalizeCaseForGenerate(c: AppealCase): AppealCase {
+  const metaIn = { ...(c.meta ?? {}) } as AppealCase["meta"] & {
+    payer_id?: string;
+    denial_type?: string;
+  };
+  const meta = { ...metaIn } as AppealCase["meta"];
+  const denialIn = { ...((c as any).denial ?? {}) } as any;
+  const clinicalIn = { ...((c as any).clinical ?? {}) } as any;
+
+  const denial: AppealCase["denial"] = {
+    ...denialIn,
+    denial_date: denialIn.denial_date || "",
+    denial_verbatim:
+      denialIn.denial_verbatim ||
+      denialIn.verbatim_excerpt ||
+      "",
+    denial_type: denialIn.denial_type || metaIn.denial_type,
+    payer_id: denialIn.payer_id || metaIn.payer_id,
+  };
+
+  let failed = clinicalIn.failed_therapies;
+  if (!Array.isArray(failed) || failed.length === 0) {
+    const prior = clinicalIn.prior_therapies;
+    if (Array.isArray(prior) && prior.length) {
+      failed = prior
+        .map((p: unknown) =>
+          typeof p === "string"
+            ? { drug: p, class: "", start: "", stop: "", reasonStopped: "prior therapy (legacy demo field)" }
+            : p
+        )
+        .filter(Boolean);
+    } else {
+      failed = [];
+    }
+  }
+
+  const clinical: AppealCase["clinical"] = {
+    ...clinicalIn,
+    diagnosis_icd10: Array.isArray(clinicalIn.diagnosis_icd10)
+      ? clinicalIn.diagnosis_icd10
+      : [],
+    disease_severity: clinicalIn.disease_severity ?? {},
+    failed_therapies: failed,
+    clinical_narrative_bullets:
+      clinicalIn.clinical_narrative_bullets ||
+      clinicalIn.physician_notes ||
+      "",
+  };
+
+  return { ...c, meta, denial, clinical };
+}
+
 function severityLines(c: AppealCase): string[] {
-  const s = c.clinical.disease_severity;
+  const s = c.clinical?.disease_severity;
   const lines: string[] = [];
-  if (s.bsaPercent != null) lines.push(`BSA involvement: approximately ${s.bsaPercent}%`);
-  if (s.iga != null) lines.push(`IGA: ${s.iga}`);
-  if (s.pga != null) lines.push(`PGA: ${s.pga}`);
-  if (s.dlqi != null) lines.push(`DLQI: ${s.dlqi}`);
-  if (s.hurleyStage != null) lines.push(`Hurley stage: ${s.hurleyStage}`);
-  if (s.durationYears != null) lines.push(`Disease duration: approximately ${s.durationYears} years`);
-  if (s.notes) lines.push(s.notes);
+  if (s) {
+    if (s.bsaPercent != null) lines.push(`BSA involvement: approximately ${s.bsaPercent}%`);
+    if (s.iga != null) lines.push(`IGA: ${s.iga}`);
+    if (s.pga != null) lines.push(`PGA: ${s.pga}`);
+    if (s.dlqi != null) lines.push(`DLQI: ${s.dlqi}`);
+    if (s.hurleyStage != null) lines.push(`Hurley stage: ${s.hurleyStage}`);
+    if (s.durationYears != null) lines.push(`Disease duration: approximately ${s.durationYears} years`);
+    if (s.notes) lines.push(s.notes);
+  }
   if (lines.length === 0) {
     lines.push(
       "Severity scores were not fully provided in the case intake; please confirm BSA/IGA/PGA/DLQI/Hurley as applicable before submission."
@@ -79,7 +135,7 @@ function severityLines(c: AppealCase): string[] {
 }
 
 function priorTherapyTable(c: AppealCase): string {
-  const rows = c.clinical.failed_therapies;
+  const rows = c.clinical?.failed_therapies ?? [];
   if (!rows.length) {
     return "_No prior therapies listed in intake — document failed/step agents before submission._";
   }
@@ -96,8 +152,8 @@ function priorTherapyTable(c: AppealCase): string {
 
 function rationaleForDenial(c: AppealCase): string {
   const type = resolveDenialType(c);
-  const drug = c.meta.requested_drug;
-  switch (c.denial.denial_type) {
+  const drug = c.meta?.requested_drug || "[drug]";
+  switch (type.id) {
     case "step_therapy":
       return [
         `The plan denied coverage citing step therapy / fail-first requirements (${type.label}).`,
@@ -190,10 +246,10 @@ function citationBlock(c: AppealCase): string {
 }
 
 function specificAsk(c: AppealCase): string {
-  const drug = c.meta.requested_drug;
-  const dose = c.meta.requested_dose ? ` at ${c.meta.requested_dose}` : "";
+  const drug = c.meta?.requested_drug || "[drug]";
+  const dose = c.meta?.requested_dose ? ` at ${c.meta.requested_dose}` : "";
   const indication = resolveIndication(c);
-  switch (c.denial.denial_type) {
+  switch (resolveDenialType(c).id) {
     case "step_therapy":
       return `We respectfully request that you overturn this denial and authorize ${drug}${dose} for the treatment of ${indication.label}, accepting documented prior therapy failures in satisfaction of step therapy requirements.`;
     case "medical_necessity":
@@ -224,26 +280,27 @@ function letterhead(settings: ClinicSettings): string {
  * Optional OpenAI polish if OPENAI_API_KEY is set — never required.
  */
 export async function generateAppeal(
-  c: AppealCase,
+  raw: AppealCase,
   settings: ClinicSettings
 ): Promise<{ letter_markdown: string; checklist: string[]; gaps: string[] }> {
+  const c = normalizeCaseForGenerate(raw);
   const payer = resolvePayer(c);
   const indication = resolveIndication(c);
   const denialType = resolveDenialType(c);
   const { checklist, gaps } = buildChecklistAndGaps(c);
 
   const reParts = [
-    c.meta.patient_initials ? `Member: ${c.meta.patient_initials}` : null,
-    `Internal case: ${c.meta.internal_case_id}`,
-    c.denial.auth_or_claim_number
+    c.meta?.patient_initials ? `Member: ${c.meta.patient_initials}` : null,
+    c.meta?.internal_case_id ? `Internal case: ${c.meta.internal_case_id}` : null,
+    c.denial?.auth_or_claim_number
       ? `Auth/Claim #: ${c.denial.auth_or_claim_number}`
       : null,
-    `Drug: ${c.meta.requested_drug}`,
+    `Drug: ${c.meta?.requested_drug || "[drug]"}`,
     `Indication: ${indication.label}`,
-    `Denial date: ${fmtDate(c.denial.denial_date)}`,
+    `Denial date: ${fmtDate(c.denial?.denial_date)}`,
   ].filter(Boolean);
 
-  const narrative = c.clinical.clinical_narrative_bullets
+  const narrative = (c.clinical?.clinical_narrative_bullets || "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean)
@@ -265,7 +322,7 @@ Dear Appeals Reviewer:
 On behalf of our patient, we request reconsideration and overturn of the ${denialType.label.toLowerCase()} denial issued by ${payer.name} on ${fmtDate(c.denial.denial_date)} regarding ${c.meta.requested_drug} for ${indication.label}.
 
 **Denial language (as provided):**  
-> ${c.denial.denial_verbatim.replace(/\n/g, "\n> ")}
+> ${(c.denial.denial_verbatim || "[denial language not provided]").replace(/\n/g, "\n> ")}
 
 ${c.denial.carc_codes ? `**CARC/RARC (if applicable):** ${c.denial.carc_codes}\n` : ""}${
     c.denial.appeal_deadline
@@ -274,7 +331,7 @@ ${c.denial.carc_codes ? `**CARC/RARC (if applicable):** ${c.denial.carc_codes}\n
   }
 ## Clinical summary
 
-- **Diagnosis (ICD-10):** ${c.clinical.diagnosis_icd10.join(", ") || "[not provided]"}
+- **Diagnosis (ICD-10):** ${(c.clinical.diagnosis_icd10 || []).join(", ") || "[not provided]"}
 - **Requested therapy:** ${c.meta.requested_drug}${c.meta.requested_dose ? ` — ${c.meta.requested_dose}` : ""}
 - **Place of service:** ${c.meta.place_of_service || "not specified"}
 
