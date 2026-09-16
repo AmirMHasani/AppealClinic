@@ -16,19 +16,24 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || "Login failed");
-      return;
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Login failed");
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Network error — wait a few seconds and try again (cold start).");
+    } finally {
+      setLoading(false);
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -62,6 +67,9 @@ export default function LoginPage() {
                 <button type="submit" disabled={loading} className="btn-primary btn-block">
                   {loading ? "Signing in…" : "Enter workspace"}
                 </button>
+                {loading && (
+                  <p className="text-center text-[11px] text-ink-faint">First hit after idle can take a few seconds.</p>
+                )}
               </form>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createSession, verifyCredentials } from "@/lib/auth/session";
 import { getCase, getSettings, seedDemoCases, updateCase, writeAudit } from "@/lib/db";
 import { generateAppeal } from "@/lib/generator/generateAppeal";
@@ -41,7 +41,13 @@ export async function POST(req: Request) {
       entityType: "user",
       entityId: user.id,
     });
-    await ensureDemoLetters(user.clinicId);
+    // Do not block the session response on demo letter backfill (was ~20s+).
+    after(() => {
+      void ensureDemoLetters(user.clinicId).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[ensureDemoLetters] deferred failed: ${message}`);
+      });
+    });
     return NextResponse.json({
       ok: true,
       user: {
